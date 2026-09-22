@@ -6,48 +6,20 @@
 <title>SpellMaster Pro — Fix Your Spelling. One Mistake at a Time.</title>
 <!--
   ============================================================================
-  SpellMaster Pro — Single-file spelling & vocabulary learning platform
+  SpellMaster Pro — single-file spelling & vocabulary learning platform
   ============================================================================
-  OVERVIEW
-    A complete, functional learning platform (not a quiz) built around:
-      UNDERSTAND THE MISTAKE → PRACTICE THE PATTERN → REMEMBER → REDUCE ERRORS
-    Full loop: Listen/Read → Recall → Type → Compare → Analyze error →
-    Classify → Store attempt/mistake → Update error profile → Schedule SRS →
-    Targeted practice → Master.
-
-  FEATURES
-    • Landing page, register/login, guest mode (auto-syncs on signup)
-    • Dashboard: streak, daily goal, accuracy, mastered, need-review, insights
-    • Practice modes: Listen&Type, Read&Type, Mistake Review, Daily Challenge,
-      Timed Challenge, Quick, Category, Custom List, Error-Pattern practice
-    • Spelling comparison engine: Levenshtein + alignment backtrace; detects
-      missing/extra/wrong letter, transposition, double consonant/vowel,
-      wrong ending/prefix, spacing, hyphenation, capitalization
-    • Visual SpellingDiff component (accessible: shapes+text, not color alone)
-    • Mistake database + "My Spelling Patterns" analytics (real user data only)
-    • SM-2-inspired SRS, mastery requires sustained recall
-    • Vocabulary library (search/filter/sort), word details, custom lists (CSV)
-    • Progress charts (canvas), achievements, local leaderboard, settings
-    • Admin: dashboard, vocabulary mgmt, categories, analytics,
-      CSV import + PDF import (pdf.js, loaded on demand) with preview/approval,
-      dedupe on re-import, needs_review flags
-    • Web Speech API TTS (en-GB/en-US, speeds 0.6–1.2), graceful fallback
-    • Data persisted in localStorage; session resumes after refresh
-
-  INITIAL VOCABULARY
-    Ships with a structured seed dataset of IELTS-Listening-oriented words
-    organized by the categories from the source PDF. The REAL 1,200-word PDF
-    should be imported via Admin → Import → PDF Import (admin login below).
-    Imported records keep source attribution + needs_review flags.
-
-  DEMO LOGINS (created on first run)
-    Admin:  admin@spellmaster.app / admin123
-    Demo:   demo@spellmaster.app  / demo123  (has sample history for charts)
-
-  NOTES
-    • Passwords live in localStorage — fine for a local single-file app;
-      swap the auth layer for Supabase Auth in production.
-    • Everything runs offline; PDF import needs internet once (pdf.js CDN).
+  INITIAL VOCABULARY (hard-coded, two PDF sources, canonical-word model):
+    Source 1: "List of words in the IELTS Listening Test" (Jibon IELTS, scan PDF)
+    Source 2: "The 1200 most commonly repeated words in IELTS Listening Test"
+              (text PDF)
+    All categories transcribed verbatim from both documents. Words shared by
+    both sources are stored as ONE canonical record linked to both sources;
+    in-category duplicates are merged; cross-category repeats become junction
+    links. Source-faithful extraction artifacts are flagged needs_review.
+  Full learning loop: listen/type → spelling engine → mistake classification
+  → visual diff → SRS → recommendations → analytics → admin → gamification.
+  DEMO LOGINS (seeded): admin@spellmaster.app / admin123
+                        demo@spellmaster.app  / demo123
   ============================================================================
 -->
 <style>
@@ -92,8 +64,6 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:9px 10px;border-bottom:2px solid var(--line);white-space:nowrap}
 td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
 tr.click{cursor:pointer}tr.click:hover td{background:var(--brand-soft)}
-/* layout */
-#app{min-height:100vh}
 .shell{display:flex;min-height:100vh}
 .sidebar{width:236px;flex:none;background:var(--card);border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:0;height:100vh;overflow:auto;z-index:30}
 .sidebar .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;padding:6px 8px 16px}
@@ -112,20 +82,18 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--brand-soft)}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex:none}
 .bellwrap{position:relative}
 .bellpanel{position:absolute;right:0;top:calc(100% + 8px);width:300px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--sh);padding:10px;z-index:50}
-/* landing */
 .hero{padding:70px 24px 50px;text-align:center;max-width:820px;margin:0 auto}
 .hero h1{font-size:42px;line-height:1.15;letter-spacing:-.5px}
 .hero p{font-size:18px;color:var(--muted);margin:16px 0 28px}
 .featgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1040px;margin:30px auto;padding:0 24px}
-.steps{counter-reset:st;max-width:760px;margin:20px auto;padding:0 24px}
+.steps{max-width:760px;margin:20px auto;padding:0 24px}
 .step{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
-.step::before{counter-increment:st;content:counter(st);width:34px;height:34px;flex:none;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
-/* practice */
+.step b{width:34px;height:34px;flex:none;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
 .pcard{max-width:640px;margin:0 auto;padding:26px;text-align:center}
 .qmeta{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:14px}
 .bigword-slot{min-height:60px}
 #answer-input{font-size:22px;text-align:center;padding:14px;letter-spacing:.5px}
-.audio-grid{display:flex;justify-content:center;gap:10px;margin:16px 0}
+.audio-grid{display:flex;justify-content:center;gap:10px;margin:16px 0;flex-wrap:wrap}
 .diff-word{font-size:22px;font-weight:700;letter-spacing:3px}
 .diff-row{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0;justify-content:center}
 .diff-c{width:30px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;font-weight:700;font-size:17px;border:1.5px solid transparent}
@@ -135,8 +103,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--brand-soft)}
 .diff-c.extra{background:var(--bad-soft);border-color:var(--bad);color:var(--bad);text-decoration:line-through}
 .explain-box{background:var(--warn-soft);border:1px solid var(--warn);border-radius:12px;padding:12px 16px;margin:14px 0;text-align:left}
 .explain-box ul{margin:6px 0 0 18px}
-.flashword{font-size:34px;font-weight:800;letter-spacing:2px;animation:fade 2.2s forwards}
-@keyframes fade{0%,70%{opacity:1}100%{opacity:0}}
+.flashword{font-size:34px;font-weight:800;letter-spacing:2px;transition:opacity 1.4s}
 .pulse{animation:pp .35s}
 @keyframes pp{0%{transform:scale(.96)}60%{transform:scale(1.03)}100%{transform:scale(1)}}
 .shake{animation:sh .4s}
@@ -146,7 +113,6 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--brand-soft)}
 .modecard{cursor:pointer;padding:16px;text-align:left}
 .modecard:hover{border-color:var(--brand)}
 .modecard.sel{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
-/* toasts & modal */
 #toasts{position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;box-shadow:var(--sh);padding:11px 16px;font-size:14px;font-weight:600;animation:tin .25s;max-width:340px}
 .toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--bad)}.toast.warn{border-left-color:var(--warn)}
@@ -161,13 +127,9 @@ tr.click{cursor:pointer}tr.click:hover td{background:var(--brand-soft)}
 .ach{display:flex;gap:12px;align-items:center;padding:14px}
 .ach.locked{opacity:.45;filter:grayscale(1)}
 .ach .ic{width:44px;height:44px;border-radius:12px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;flex:none}
-.ach .ic svg{width:22px;height:22px}
 canvas{width:100%;height:220px;display:block}
 .bottomnav{display:none}
-@media(max-width:900px){
- .g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}.featgrid{grid-template-columns:1fr 1fr}
- .hero h1{font-size:32px}
-}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}.featgrid{grid-template-columns:1fr 1fr}.hero h1{font-size:32px}}
 @media(max-width:720px){
  .sidebar{position:fixed;left:0;top:0;transform:translateX(-105%);transition:.25s;box-shadow:var(--sh)}
  .sidebar.open{transform:none}
@@ -202,9 +164,8 @@ const fmtDate=s=>s?new Date(s).toLocaleDateString(undefined,{month:"short",day:"
 const debounce=(f,t)=>{let h;return(...a)=>{clearTimeout(h);h=setTimeout(()=>f(...a),t)}};
 const isVowel=c=>"aeiou".includes(c);
 function hashStr(s){let h=0;for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0}return Math.abs(h)}
-/* icons (minimal inline svg set) */
 const ICONS={
- play:'M8 5v14l11-7z',pause:'M6 5h4v14H6zM14 5h4v14h-4z',home:'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+ play:'M8 5v14l11-7z',home:'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
  book:'M4 4h7a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4zM20 4h-4a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h4z',
  x:'M6 6l12 12M18 6L6 18',check:'M4 12l5 5L20 6',chart:'M4 20V10M10 20V4M16 20v-8M22 20H2',
  list:'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',flame:'M12 2s5 4.5 5 9.5A5 5 0 0 1 7 11.5C7 6.5 12 2 12 2zM12 22a4 4 0 0 0 4-4c0-2-2-4-4-6-2 2-4 4-4 6a4 4 0 0 0 4 4z',
@@ -222,53 +183,156 @@ const ICONS={
 const ic=(n,s=18)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[n]||ICONS.star}"/></svg>`;
 const icF=n=>`<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 
-/* ============================ SEED VOCABULARY ============================ */
-/* IELTS-Listening-oriented seed set mirroring the source PDF's categories.
-   Replace/extend via Admin → Import (real PDF pipeline). */
-const CATS=["Days of the Week","Months","Money Matters","Subjects","College & University","Health","Nature & Environment","Animal Kingdom","Plants","Countries & Continents","Languages","Homes & Buildings","City & Places","Workplaces","Rating & Qualities","Touring","Verbs","Hobbies & Sports","Transportation","Weather","Equipment & Tools","Arts & Media","Materials","Jobs & Employment","Colors","Time & Expressions"];
-const RAW=[
-["Monday",0,1],["Tuesday",0,1],["Wednesday",0,2],["Thursday",0,2],["Friday",0,1],["Saturday",0,1],["Sunday",0,1],
-["January",1,1],["February",1,2],["March",1,1],["April",1,1],["May",1,1],["June",1,1],["July",1,1],["August",1,1],["September",1,2],["October",1,1],["November",1,2],["December",1,1],
-["cash",2,1],["debit card",2,1],["credit card",2,1],["cheque",2,2],["tuition fees",2,2],["refund",2,2],["deposit",2,2],["installment",2,2],["currency",2,2],["bank statement",2,2],["discount",2,1],["insurance",2,2],
-["biology",3,1],["chemistry",3,1],["physics",3,1],["geography",3,2],["economics",3,2],["psychology",3,2],["literature",3,2],["statistics",3,2],["architecture",3,2],["engineering",3,2],
-["accommodation",4,2],["course outline",4,2],["group discussion",4,2],["student advisor",4,2],["student support services",4,3],["assignment",4,1],["dissertation",4,2],["questionnaire",4,3],["research",4,1],["lecture",4,1],["seminar",4,2],["tutorial",4,2],["work experience",4,2],["proficiency",4,3],["enrolment",4,3],["committee",4,3],["attendance",4,2],
-["disease",5,1],["symptom",5,2],["prescription",5,3],["appointment",5,2],["life expectancy",5,3],["vaccination",5,3],["nutrition",5,2],["therapy",5,2],["surgery",5,2],
-["environment",6,1],["pollution",6,1],["greenhouse effect",6,3],["carbon dioxide",6,3],["climate",6,1],["recycling",6,2],["deforestation",6,3],["sustainable",6,3],
-["species",7,1],["mammal",7,2],["reptile",7,2],["predator",7,2],["habitat",7,2],["extinction",7,3],["wildlife",7,1],
-["vegetation",8,2],["fertilizer",8,3],["greenhouse",8,2],["botanical",8,3],
-["Europe",9,1],["Asia",9,1],["Australia",9,1],["Antarctica",9,2],["Brazil",9,1],["Egypt",9,1],["Portugal",9,1],["Greece",9,1],["Switzerland",9,2],["Netherlands",9,2],["parliament",9,3],
-["Spanish",10,1],["Portuguese",10,2],["Mandarin",10,2],["Arabic",10,2],["Japanese",10,1],["Russian",10,1],
-["bungalow",11,3],["apartment",11,1],["balcony",11,2],["staircase",11,2],["furniture",11,2],["suburb",11,2],["extension",11,2],["residence",11,3],
-["library",12,1],["museum",12,1],["gallery",12,1],["pharmacy",12,2],["supermarket",12,2],["restaurant",12,1],["airport",12,1],["traffic jams",12,2],["pedestrian",12,3],["fountain",12,2],["cathedral",12,3],["stadium",12,2],
-["workshop",13,2],["warehouse",13,3],["factory",13,1],["laboratory",13,2],["headquarters",13,3],["reception",13,2],["canteen",13,2],
-["necessary",14,2],["comfortable",14,2],["affordable",14,2],["reliable",14,2],["convenient",14,3],["adequate",14,3],["sufficient",14,3],["efficient",14,3],["obsolete",14,3],["immediately",14,3],
-["excursion",15,3],["itinerary",15,3],["souvenir",15,3],["guided tour",15,2],["resort",15,1],["brochure",15,3],
-["achieve",16,1],["recommend",16,2],["receive",16,2],["separate",16,2],["occur",16,2],["embarrass",16,3],["interrupt",16,3],["persuade",16,3],["maintain",16,2],["guarantee",16,3],
-["cycling",17,1],["hang-gliding",17,3],["jet-skiing",17,3],["white-water rafting",17,3],["gymnastics",17,2],["athletics",17,2],["badminton",17,2],["photography",17,3],
-["automobile",18,2],["minibus",18,2],["ferry",18,1],["tram",18,1],["subway",18,1],["luggage",18,1],["timetable",18,2],["journey",18,1],["vehicle",18,1],
-["weather forecast",19,2],["humidity",19,3],["thunderstorm",19,3],["drizzle",19,3],["hurricane",19,3],["temperature",19,1],["freezing",19,2],
-["equipment",20,2],["scissors",20,2],["microscope",20,3],["clipboard",20,2],["machinery",20,3],
-["advertisement",21,3],["journalism",21,3],["documentary",21,3],["sculpture",21,2],["exhibition",21,2],["orchestra",21,3],
-["aluminium",22,3],["porcelain",22,3],["timber",22,2],["plastic",22,1],["marble",22,1],["leather",22,1],
-["engineer",23,1],["manager",23,1],["accountant",23,2],["journalist",23,2],["veterinarian",23,3],["architect",23,2],["employment",23,2],["opportunity",23,3],
-["turquoise",24,3],["lavender",24,3],["beige",24,3],["crimson",24,3],["mauve",24,3],
-["fortnight",25,3],["decade",25,2],["century",25,1],["midnight",25,1],["anniversary",25,3],["occasion",25,2]
+/* ========================================================================
+   SEED VOCABULARY — hard-coded from two source PDFs
+   Source 1 (scan) : "List of words in the IELTS Listening Test" (Jibon IELTS)
+   Source 2 (text) : "The 1200 most commonly repeated words in IELTS Listening Test"
+   Display forms preserved verbatim. Source 2 category labels are mapped onto
+   the canonical taxonomy (Nature + animal kingdom merged; Color→Colors;
+   Transportations→Transportation; Works and jobs→Jobs and work; etc.).
+   New categories from Source 2 (Plants, Architecture and Buildings,
+   Measurement) are added alongside.
+   ======================================================================== */
+const SEED_SOURCES=[
+ {id:"src_doc1",name:"List of words in the IELTS Listening Test (Jibon IELTS)",type:"PDF",fileName:"1200_most_commonly_repeated_words.pdf"},
+ {id:"src_doc2",name:"The 1200 most commonly repeated words in IELTS Listening Test",type:"PDF",fileName:"1200_most_commonly_repeated_words_text.pdf"}
 ];
+const NEEDS_REVIEW=new Set(["lumber/wood","Local liberty","Abselling","Diggins","Masonite","Auburn","Sideway","Bullet squads","Doing Dutch","three times","per week","on sale","past the prime","Guard security","Menial jobs","In-advance","A gap","Sand trees","Health-fit",
+/* source-2 extraction artifacts & misspellings — kept verbatim, flagged */
+"burring fossil","soar power","the philipines","the dominican republic","tourist guided tour","single double bedded room"]);
+
+/* ===== Source 1: scan PDF — 37 categories ===== */
+const RAW={
+"Days of the week":["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Weekday","Weekend"],
+"Months of the year":["January","February","March","April","May","June","July","August","September","October","November","December"],
+"Colors":["Red","Blue","Green","Orange","Yellow","Indigo","Violet","Purple","Black","White","Grey","Gold","Silver","Beige","Pink","Mustard","Lavender","Mauve","Peach","Coral","Tan","Teal","Cyan","Rust","Charcoal","Cream","Maroon","Olive"],
+"Subjects":["MBA","MBBS","Business management","Arts","Science","Journal","Engineering","Finance","Commerce","Accounting","History","Architecture","Computer science","IT","Creative arts","Politics","Philosophy","Biology","Visual arts","Performing arts","Chemistry","Humanities","Agriculture","Statistics","Mathematics","Physical education","Psychology","Sociology","Victimology","Criminology","Logic"],
+"Studying at college/university":["Vocabulary","Student support system","Student retention","Admission","Guidelines","Principal","Staff","Lecturers","Proofreading","Experiment","Written work","Book","Notes","Stationery items","Printing","Photocopy","Course outline","Syllabus","Programs","Outreach","Group discussion","Seminar","Handout","Research","Dissertation","Research paper","Report writing","Experience","Reference","Text book","Homestay","Speech","Laptop","Printer","Assessment","Library","Study room","Canteen","Module","Teamwork","Topic","Main hall","Student advisor","Specialist","Shelves","Dining","Primary","Secondary","Intermediate","Media outlet","Advanced","Introduction","Background","Profile","Pencil","Eraser","Higher education","Overseas","Study abroad","Passport","Compound","Campus","International student","Commencement","College","University","Give a talk","Knowledge","Diploma","PG (postgraduate)","UG (undergraduate)","Reunion","Outcomes","Results"],
+"Numbers":["One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Hundred","Thousand"],
+"Continents":["Asia","Africa","North America","South America","Europe","Australia","Antarctica"],
+"Countries":["China","Brazil","New Zealand","Zimbabwe","India","South Africa","Portugal","Argentina","England","Australia","Ireland","Netherlands","Norway","Sweden","Dubai","Russia","The United States of America (USA)","Canada","Egypt","Mexico","Germany","Malaysia","Pakistan","Singapore","Philippines","Denmark","Scotland","North Korea","Turkey","Greece"],
+"Languages":["Russian","Thai","Persian","French","English","Tamil","Greek","Italian","Punjabi","Hindi","Bengali","Malayalam","Telugu","Rajasthani","Marathi","German","Japanese","Chinese","Spanish","Mandarin","Portuguese","Filipino"],
+"Transportation":["Sailboat","Punt","Airport","Aircraft","Car","Bus","Train","Ship","Crew","Passenger","Helicopter","Seaplane","Cabin cruiser","Kayak","Canoe","Gondola","Cargo","Shipment","Container","Ferry","Liner","Canal boat","Narrow boat","Dinghy sailing","Hovercraft","Hydrofoil","Airship","Hot-air balloon","Platform","Automobile"],
+"Workplaces":["Clinic","Stress","Recognition","Awards","Achievement","Employer","Employment","Cooperation","Team leaders","Showroom","Fired","Layoff","Workshop","Conferences","Meeting","Reception","Appointment","Rejection","Colleague","Vision","Mission","Ability","Skill set","Internship","Tribute","Pioneer","Contribution","Blaze a trail","Symbol","Legend","Personality","Determined","Forgetful","Diligent","Wear out","Perseverance","Workaholic","Workload","Struggle","Continuous exploration","Hard-working","Get along with","Proposal","Branch","Transaction","Bid","Transfer","Job hunting","Inexperienced","Want ads","Unemployment","Wage","Opening","Inquiry","Consult","Application letter","Fire","Hire","Job-hopping","Impression","Pressure","Turn down","Confident","Confidential","Have no match for","Manager","Consulting firm"],
+"Places":["Accommodation","Local liberty","Swimming pool","Dance studio","Park","Conversation club","Kindergarten","Parliament","Assembly","Cafeteria","Cottage","Resting area","Restaurant","Bookshop","Sports center","Central hall","City council","Cafe shop","Home"],
+"Money matters":["Retail","Voucher","Coupon","Money","Exchequer","Cash flow","Low risk","Management","Credit","Debit card","Cheque","Annual fee","Poverty","Bank statement","Current account","Deficit","Inflation","MasterCard","UPI","VISA","Duty-free store","Paytm","Distribution costs","Finance department","Family finances","Student's account","Deposit","Withdraw","Counterfeit money","Debt","Grace period","In-advance","Budget deficit","Interest","Free money","Partial refund","Purchase","Cash","Advancement","Tuition fees","Income","Non-refundable","Interest rate","Annuity","Public money","Taxpayers","Financial management","Client"],
+"Verbs":["Touch","Learn","Suggest","Arrange","Borrow","Persuade","Hunt","Support","Register","Train","Supervise","Edit","Revise","Walk","Run","Jump","Exercise","Perform","Concentrate","Focus","Study","Immigrate","Review","Fight","Compete","Withstand","Face it"],
+"Hobbies":["Gardening","Painting","Embroidery","Chess","Carom","Cycling","Parachute","Scuba diving","Skateboarding","Stamp collection","Crafting","Sculpting","Ice skating","Golf","Billiards","Photography","Bowls","Snorkeling","Pottery","Woodcarving","Musician"],
+"Marketing":["Profit","Loss","Margin","Competition","Competitor","Merchandise","Recruitment","Cataloguing","Interview","Downfall","Risk management","Research method","Research analysis","Entertainment","Industry","TV program","Newspaper offer","Special discounts","Leadership strategy","Mass media","Marketing","Questionnaire","Products","Best quality","Survey poll","Business training","Statistics","Bankrupt","Circulation","Financier surplus","Economic crisis","Potential","Cyberspace","Collapse","Multimedia","Hacker","Server","Monetization","Quarterly","Half-yearly","Marriage","Tendency","Percentage"],
+"Adjectives":["Permanent","Temporary","Convenient","Immense","Vast","Salty","Extinct","Vulnerable","Pessimistic","Western","Realistic","Optimistic","Suitable","Social","Ancient","Fantastic","Exciting","Compulsory","Flexible","Confident","Intact","Various","Decisive","Practical","Knowledgeable","Tranquil","Conscious","Commitment","Recessionary","Boring","Modern"],
+"Sports":["Exercise","Warm up","Spirit","Jet-skiing","Bodyboarding","Snowboarding","Players","Sportsmanship","Cricket","Baseball","Basketball","Rugby","Hang-gliding","Skydiving","Soccer","American football","Hockey","Goals","Draw","Swimming","Tennis","Squash","Javelin","Badminton","Shuttle","Ping-pong","Field court","Cricket match","Weather","Pitch","Stadium","Team","Discus","Hammer","High jump","Horse racing","Show jumping","Polo","Cycling","Canoeing","Refreshment","Gymnasium","Extreme sports","Paragliding","Abselling","Athlete","Gym workout","Bungee jumping","White-water rafting","Surfing","Windsurfing","Kitesurfing","Mountain biking","Push-up","Pull-up","Bullet squads","Judo","Recreation","Jogging","Press-up","Snooker","Walking","Barbell","Treadmill","Winner","Runner-up","Championship","Doing Dutch"],
+"Shapes":["Square","Rectangle","Mass","Depth","Shallow","Round","Oval","Triangle","Parallelogram","Trapezium","Cylindrical","Three dimensions","Measurement","Spiral","Metric system","High","High Frequency","Height","Breadth","Length","Altitude","Imperial system","Curved","Spherical","Circle","Polygon","Decoration"],
+"Weather":["Moist","Rainy","Sunny","Hot","Humid","Breezy","Chill","Cold","Winter","Dusty","Freezing","Warm","Wet","Antenna","Forecast","Sunrise","Dry","Cloudy","Heat wave","Overcast","Shower","Tornado","Sunset","Temperature","Pressure","Precipitation","Erosion","Climate trend","Variation","Climate warming","Watch","Sensitive","Anomaly","Mishap","Conservation area","Gust","Downpour","Recycled water","Renewable energy","Feeling under the weather"],
+"Equipment and Tools":["Mechanic","Light","Screw","Equipment","Technician","Electricity","Wiring","Helmet","Safety","Musical instrument","Cassette","Digital","Silicon chip","Screen","Breaks","Wheels","Pencil","Disk","Backpack","Electronic gadgets","Device","Monitor","Computer","Laptop","PC","Tablet","Appliance","Gizmo","Machinery","Mechanism","Gear","Apparatus","Utensils","Instruction","Hardware","Stuff"],
+"Arts and Media":["Graphics","Design","Classical music","Theatre","Cinemas","Art gallery","Gallery","Museum","Ballet","Television","Radio","Newspaper","Opera","Orchestra","Concert","Symphony","Press","Publication","Publisher","Paperback","Hardcover","Conflict","Campaign","Conductor","Vocalist","Festival","Carnival","Exhibition","Publishing","Announcement","Cable","Communication","Correspondence","Artistry","Craftsmanship","Dexterity","Expertise","Beverage","Horror films","Documentary","Violence movie","Commercial advertisement","Romantic songs","Friendly gesture","TV theatre","Entertainment industry","Film business","Gardening","Assignment"],
+"Vehicles":["Camper","Double-decker bus","Single-decker","Tow truck","Lorry","Truck","Tram","Underground","Subway","Caravan","Tractor","Stream train","Freight train","Jeep","Taxi","Auto rickshaw","Breakdown truck","School","College bus","Vehicle","Cab","Transporter","Pickup","Drop by","Forklift truck","Air conditioner","Sink","Install"],
+"Expressions and Time":["Days","Part-time","Full-time","three times","Once","Twice","Thrice","per week","Millennium","A gap","Midnight","Century","Decade","Fortnight","Indexing"],
+"Materials":["Silver","Gold","Paper","Wood","Aluminum","Copper","Glass","Leather","Bone","lumber/wood","Glue","Concrete","Wax","Fur","Metal","Rubber","Plastic","Ceramics","Cement","Stone","Textile","Composite","Fiberglass","Feather","Cotton","Silk","Titanium","Platinum","Steel","Raw materials"],
+"Health":["Nursery","Tomatoes","Pizza","Bread","Cereals","Minerals","Zinc","Meat","Food","Fruits","Vegetables","Yoghurt","Beans","Milk","Cheese","Liver","Chicken","Mutton","Beef","Pork","Treatment","Medicine","Remedy","Workout","Regular exercise","Nursing","Health care","Eggs","Disease","Tai-chi","Fitness","Health-fit","Balanced diet","Food pyramid","Vitamin","Rice","Carbohydrates","Green pepper","Chilly","Blackcurrant","Mango","Pineapple","Well-being","Robustness","Soundness","Verdure","Wellness","Healthiness","Sap","Body mass index","Biopsy","Hypotension","Anti-inflammatory","Put on weight","Watch your diet","Overweight","Lose weight","Physical exercise","On diet","In good shape","In a fit state","Feel under the weather","In poor shape","Fit as a fiddle","Out of shape","Hospital","Doctors","Physician","Surgeon","Consultant","Anesthetist","Infirmary"],
+"Jobs and work":["Lecturer","Vacancy","Teacher","Professor","Address","Mail","Pilot","Creator","Cashier","Captain","Engineer","Assistant","Associate","Executive","Chief executive officer","Accountant","Guard security","Security","Flight attendant","Data analyst","Curriculum vitae","Resume","Clerk","Freelance","Professional experience","Volunteer","Craftsman","Waitress","Psychologist","Software developer","Menial jobs","Director","Senior role","Junior post","Situation","Employ","Career","Profession","Occupation","Spot","Place","Capacity","Skills required","Office space","Service","Pursuit","Practice","Engagement","Determination","Success"],
+"Nature & Animal Kingdom":["Landscape","Mountains","Valley","River","Forest","Earthquake","Tsunami","Footbridge","Field","Desertification","Cliff","Island","Volcano","Catastrophe","Natural calamity","Disaster","Oasis","Dam","Canyon","Avalanche","Lake","Reef","Coast","Waterfall","Village","Town","Storm","Flood","Hurricane","Pond","Peninsula","Hill station","Typhoon","Beach","Cave","Countryside","Desert","Environment","Nature","Meadow","Ocean","Sea","Wild","Animal","Birds","Branch","Bush","Fish","Flower","Grass","Insects","Mud","Path","Sand trees","Wave","Earth","Planet","Tiger","Lion","Seabirds","Mammals","Genus","Reptile","Octopus","Amphibian","Family","Livestock","Stem roots","Cluster","Fertilizer","Core","Bark","Trunk","Twig"],
+"Environment":["Coal","Greenhouse gas","Fossil fuels","Acid rain","Global warming","Drought","Contaminated","Effect","Power plants","Deforestation","Afforestation","Solar panels","Solar power","Hydroelectric power","Environmental friendly","Oxygen","Carbon di-oxide","Chemical-free","Vegetation","Sea level rise","Ocean currents","Soil conditioner","Burning fossil fuels","Fumes","Climate","Pollution","Energy source","Nitrogen","Smog","Firewood","Atmosphere","Biodiversity","Carbon monoxide","Carcinogen","Biodegradable","Biogas"],
+"Homes":["Ground floor","Oven","Hallway","Insurance","Story","Kitchen","Houseboat","Duplex","Penthouse","Bungalow","Thatched cottage","Mobile home","A block of flats","Apartment building","Rent","Lease","Sofa","Coffee table","Condominium","Basement","Terraced house","Row house","Diggins","Dwelling","Fireside","Habitation","Hearthstone","Bathroom","Abode","Dollhouse","Cabin","Household","Edifice","Guesthouse","Masonite","Downtown","Auburn","Spare room","Housing","Entrance","House-warming party","Burglar","Neighborhood","Dwell","Flat","Sideway","Terrace","Landlord","Landlady","Vacuum cleaner","Household costs","Economical","Frugal","Keep an eye on","Hospitality"],
+"Rating and Qualities":["Cheap","Expensive","Rich","Poor","Satisfactory","Dangerous","Disappointment","Luxurious","Spotted","Striped","Recommended","Reasonable","Safe","Quantity","Quality","Kind","Aspect","Condition","Character","Superior","Exclusive","Offers","First-rate","Prime","Excellent","Top-notch","Topflight","Five-star","Budget"],
+"Touring and Backpacking":["Tour","Excursion","Trip","Guide","Ticket fee","Office","Destination","Arrival","Departure","Reservation","Cancellation","Advance booking","Double occupancy","Rooms and accommodations","Tourist attractions","Spots","Souvenir","Picnic","Aquarium","Suite","Memorable","Hostel","Culture","View","Scenic","Motel","Check in","Flight number","Travel agency","Book the ticket","Resort","Express fast","High-speed","Tube","Expressway","Freeway","Roundtrip","Skiing","Streetcar"],
+"Library":["Shelf","Librarian","Copier","Overdue","Reading room","Periodical room","Return","Magazine","Fine","The stacks","Index","Catalogue","Study lounge","Library card","Book reservation","Back issue","Current issue","Latest number","Keyword","Writing permission","Check out","Put on reserve","Volume","Book room","Storage","Media center","Information desk","Athenaeum","Elective"],
+"School":["Student","Freshman","Sophomore","Bachelor","Master","Doctoral candidate","Alumni","Alumnus","Post doctorate","Dean","Rank","Curriculum","Drop-out","Physics","Makeup exam","Book review","Novel","Biography","Editorial","Extra copy","Registration","Enrolment","Paperback edition","Out of print","Plough through","Read","Write extensively","Get through a novel","Be addicted to the book","Speech contest","Sign up for","Enroll in","Future students"],
+"Shopping":["Department store","Receipt","Outlet","Sell out","Grocery store","Customer","Complaint","Deliver","Convenience store","Mall","Chain store","Supermarket","Family size","on sale","Electronic product","Stationery","past the prime","Video camera","Electric cooker","Iron","Fix the dinner"],
+"City":["Leisure time","Pay phone","Long-distance call","Take a message","Hold on","Telephone booth","Hang up","Maintenance","Crack","Unfurnished","Baby crib","Multiple glazing","Sideboard","Heater","Refrigerator","Fridge","Pipe","Furnace","Leak","Plumber"],
+"Other Words":["Ultrasound","Spelling","Recipient","Activity","Attitude","Encouragement","Encyclopedia","Robot","Artificial intelligence","Proficiency","Evolution","Revolution","Man-made","Narrative","Dialogue","Guarantee","Procedures","Safety road","Driving license","Prize","Ramification","Observation","Nature conservation","Life expectancy","Videos","Liberty","Republic","Opportunity","Dialect","Frequency","Calendar","Burger","Foodie","Junior","Senior","Prototype","Fulfilment","Government","Creativity","Umbrella","Original inhabitant","Indigenous","Demonstration","Circuit","Decision-making","Language test","Tests","Exams","Alternatives","Visa sponsorship","Chocolate","Biscuits","Epidemic","Pandemic","Bird flu","SARS","Toothache","Allergy","Sneeze","Fracture","Diabetes","Sore throat","Runny nose","Infectious illness","Temperature check","Dental decay","Cure","Recover","Solar"]
+};
+
+/* ===== Source 2: text PDF — mapped to canonical category names ===== */
+const RAW2={
+"Days of the week":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday","weekdays","weekend"],
+"Months of the year":["January","February","March","April","May","June","July","August","September","October","November","December"],
+"Money matters":["cash","debit","credit card","cheque","in advance","annual fee","monthly membership","interest rate","deposit","tuition fees","poverty","bank statement","money management","current account","student account","withdraw","low-risk investment","mortgage","grace period","budget deficit","retail voucher","coupon","counterfeit money","public money","taxpayers' money","debt","interest-free credit","purchase","partial refund","annuity","non-refundable","MasterCard","VISA","distribution costs","income","finance department","family finances","duty-free store"],
+"Subjects":["science","politics","history","biology","architecture","law","geography","archaeology","literature","business management","agriculture","statistics","mathematics","logic","physics","psychology","anthropology","economics","philosophy","performing arts","visual arts","chemistry","humanities"],
+"Studying at college/university":["course outline","group discussion","handout","written work","report writing","research","proofreading","experiment","experience","reference","textbook","dictionary","laptop","printer","student advisor","teamwork","module","topic","assessment","library","department","computer centre","classroom","lecture","tutor","main hall","attendance","deadline","give a talk","speech","computer laboratory","certificate","diploma","placement test","overseas students","full-time","facilities","college","dining room","specialist","knowledge","international","accommodation","home stay","primary","secondary","intermediate","media room","resources room","staff","commencement","dissertation","leaflet","faculty","pupils","pencil","feedback","tasks","outcomes","advanced","introductory","extra background","higher education","guidelines","post-secondary","supervisor","bachelor's degree","compound","vocabulary","student support services","student retention","publication","foreign students","schedule","school reunion","registrar's office","stationery"],
+"Marketing":["catalogue","interview","newsletter","competition","TV program","strategies","research method","entertainment industry","leadership","management","display","products","customer","special offer","collecting data","questionnaire","survey","mass media","statistic","profit margin","poll","business card","training","trainee","merchandise","manufacture","recruitment"],
+"Health":["yoga","tai-chi","keep-fit","salad bar","vegetarian","outdoor activities","leisure time","disease","meal","protein","balanced diet","food pyramid","vitamin","carbohydrates","rice","pasta","potatoes","pizza","tomatoes","bread","cereals","minerals","zinc","meat","seafood","eggs","beans","milk","cheese","yoghurt","fruit","vegetables","citrus fruits","green pepper","blackcurrant","nuts","egg yolk","liver","medicine","treatment","remedy","nursing care","nursery","regular exercise"],
+/* Source 2 splits Nature and The animal kingdom — merged into the canonical category */
+"Nature & Animal Kingdom":["field","footbridge","environment","waterfall","river","mountain","forest","village","coast","reef","lake","valley","hill","cliff","island","peninsula","earthquake","avalanche","tornado","typhoon","desertification","volcano","disaster","catastrophe","erosion","landslides","storm","flood","hurricane","pond","jungle","oasis","dam","canyon","birds of prey","seabirds","poultry and game","mammals","cetacean","whale","primates","rodents","fish","amphibian","reptile","insects","octopus","phylum","class","order","family","genus","species","livestock","creature","lion","penguin"],
+"Environment":["greenhouse effect","acid rain","global warming","carbon dioxide","burring fossil","exhaust fumes","deforestation","nitrogen oxide","smog","climate","pollution","temperature","power plants","landfill","cattle","wind turbine","soar power","hydroelectric power","renewable","source of energy","reliable","solar panels","environmentally friendly","oxygen","chemical-free","desert","degradation","vegetation","sea level","ocean currents","soil conditioner","coal","fossil fuels","firewood","drought","contaminated"],
+"Plants":["mushroom","fungus","leaves","seed","core","bark","trunk","twig","branch","flower","stem","roots","cluster","fertilizer"],
+"Continents":["South America","North America","Africa","Asia","Europe","Australia","Antarctica"],
+"Countries":["Egypt","Mexico","France","Indonesia","Turkey","England","Germany","China","Greece","Brazil","India","North Korea","Malaysia","New Zealand","Nigeria","Pakistan","Singapore","Switzerland","United Kingdom","Italy","the dominican republic","the philipines","Denmark"],
+"Languages":["linguistics","bilingual","trilingual","polyglot","Portuguese","Mandarin","Bengali","Chinese","Hindi","Russian","Japanese","German","Punjabi","Thai","Persian","Filipino","French","Italian","Greek"],
+"Architecture and Buildings":["dome","palace","fort","castle","glasshouse","pyramid","log cabin","lighthouse","hut","skyscraper","sculpture"],
+"Homes":["semi-detached house","duplex","terraced house","town house","row house","bungalow","thatched cottage","mobile home","houseboat","block of flats","apartment building","condominium","chimney","bedroom","basement","landlord","tenant","rent","lease","neighborhood","suburb","sofa","coffee table","dormitory","storey","kitchen","refrigerator","microwave","ground floor","oven","hallway","insurance"],
+"City":["cities","street","lane","city centre","central station","car park","department store","bridge","temple","embassy","road system","hospital","garden","avenue"],
+"Workplaces":["clinic","dentist","reception","appointment","staff selection","colleague","workshop","showroom","information desk","employer","employment","unemployed","technical cooperation","team leaders","stress","ability","vision","confidence","employee","internship"],
+"Rating and Qualities":["reasonable","satisfactory","dangerous","safe","strongly recommended","poor quality","satisfied","disappointed","efficient","luxurious","colored","spotted","striped","expensive","cheap"],
+"Touring and Backpacking":["tourist guided tour","ticket office","souvenir","trip","guest","reservation","view","culture","memorable","single double bedded room","picnic","tourist attraction","hostel","suite","aquarium"],
+"Verbs":["train","develop","collect","supervise","mark","edit","revise","exhibit","donate","surpass","register","support","hunt","persuade","concentrate","discuss","suggest","arrange","borrow","immigrate","review","learn","touch"],
+"Adjectives":["energetic","social","ancient","necessary","fantastic","exciting","fabulous","dull","comfortable","convenient","suitable","affordable","voluntary","mandatory","compulsory","temporary","permanent","immense","vast","salty","extinct","vulnerable","pessimistic","optimistic","realistic","practical","knowledgeable","flexible","confident","Western","intensive","tranquil","spectacular","intact","various"],
+"Hobbies":["orienteering","caving","spelunking","archery","ice skating","scuba-diving","snorkeling","skateboarding","bowls","darts","golf","billiards","photography","painting","pottery","woodcarving","gardening","stamp collection","embroidery","climbing","chess","parachute"],
+"Sports":["cricket","baseball","basketball","rugby","soccer","american football","hockey","swimming","tennis","squash","badminton","ping-pong","field","court","pitch","stadium","team","the discus","the javelin","the hammer","the high jump","horse racing","show jumping","polo","cycling","gymnasium","athlete","gym","extreme sports","paragliding","hang-gliding","skydiving","abseiling","snowboarding","bungee jumping","surfing","windsurfing","jet-skiing","bodyboarding","white-water rafting","kitesurfing","mountain biking","jogging","press-up","push-up","barbell","treadmill","judo","recreation","snooker","walking","championship","canoeing","refreshment"],
+"Shapes":["Square","rectangular","triangular","polygon","Oval","spherical","spiral","circular","curved","cylindrical"],
+"Measurement":["width","length","altitude","imperial system","metric system","Mass","depth","breadth","height","three dimensions","frequency"],
+"Transportation":["cargo plane","shipment","container ship","boat","lifeboat","ferry","hovercraft","hydrofoil","liner","canal boat","narrowboat","dinghy sailing","sailboat","paddle steamer","cabin cruiser","rowing boat","rowboat","kayak","canoe","punt","gondola","aircraft","helicopter","seaplane","airship","hot-air balloon","airport","crew","passenger","platform","hire a car","automobile"],
+"Vehicles":["double-decker bus","single-decker","minibus","school bus","coach","truck","tanker","van","lorry","transporter","forklift truck","tow truck","breakdown truck","pickup","jeep","caravan","camper","tractor","taxi","cab","tram","underground","subway","stream train","freight train","goods train"],
+"Weather":["humid","hot","sticky","breeze","chilly","cold","cool","dry","dusty","freezing","warm","wet","weather forecast","antenna","moisture"],
+"Places":["local library","swimming pool","cafeteria","cottage","parliament","accommodation","restaurant","canteen","cafe","bookshop","sports centre","city council","dance studio","park","conversation club","kindergarten"],
+"Equipment and Tools":["helmet","light","musical instrument","cassette","silicon chip","digital monitor","gadget","device","screen","breaks","wheels","mechanical pencil","disk","backpack"],
+"Arts and Media":["Opera","Orchestra","concert","symphony","the press","conductor","vocalist","audience","festival","carnival","exhibition","classical music","theatre","cinemas","art gallery","museum","ballet","television","radio","graphics","newspaper"],
+"Materials":["fur","metal","steel","aluminum","copper","rubber","plastic","ceramics","glass","cement","stone","textile","cotton","fabric","wool","leather","bone","paper","lumber/wood","glue","composite","fiberglass","concrete","wax","wood","silver","gold","feather"],
+"Jobs and work":["occupation","profession","designer","decorator","architect","engineer","manager","waitress","waiter","teacher","vacancy","professor","specialist","psychologist","volunteer","freelance","secretary","craftsman","work experience","curriculum vitae","mail address","receptionist","pilot","guard","flight attendant","lecturer","office assistant","clerk","accountant","cashier","captain"],
+"Colors":["blue","white","orange","green","grey","black","red","yellow","purple","brown","pink"],
+"Expressions and Time":["three times","three times per week","a gap year","full-time","part-time","midday","midnight","millennium","century","decade","fortnight"],
+"Other Words":["passport photo","state","government","individual","variety","private sector","practice","gender","creativity","original inhabitant","indigenous","demonstration","strike","entrance","circuit","guarantee","dialogue","commerce","carriage","narrative","chocolate","satellite","decision","prototype","attitude","daily routine","personal fulfillment","activity","recipient","ultrasound","pedestrian safety","traffic jams","procedures","creation","prize","junior","senior","opportunity","driving license","process","literary","man-made","republicans","umbrella","frequently updated","waiting list","sewer systems","liberal democracy","democrats","lunar calendar","libertarian","burger","videos","nature conservation","life expectancy","fund-raising event","magnet","dialect","ramification","straight","farewell","welfare","encyclopedia","evolution","revolution","illiteracy","robot","proficiency","sufficient"]
+};
 
 /* ============================ DATABASE (localStorage) ============================ */
-const DBKEY="spellmaster_db_v1";
+const DBKEY="spellmaster_db_v3";
 let DB=null;
-function newWord(w,cats,diff,sourceId){const lw=w.toLowerCase().trim();return{id:uid(),word:lw,display:w,normalized:lw.replace(/[^a-z0-9]+/g,""),categories:cats,difficulty:diff||2,source:sourceId||"src_seed",meaning:"",example:"",pos:"",ipa:"",needsReview:false,active:true,createdAt:Date.now(),isMultiword:/\s/.test(lw),isHyphenated:/-/.test(lw)}}
+const normOf=w=>w.toLowerCase().trim().replace(/[^a-z0-9]+/g,"");
+function guessDifficulty(w){
+ if(/\s/.test(w)&&w.length>=14)return 3;
+ if(w.length>=10||/(ph|kn|gh|sc|ps|mn|gue|quo)/.test(w))return 3;
+ if(w.length>=7||/\s/.test(w))return 2;
+ return 1;
+}
+function newWord(w,cats,sourceId){
+ const lw=w.toLowerCase().trim();
+ return{id:uid(),word:lw,display:w,normalized:normOf(w),categories:cats,difficulty:guessDifficulty(lw),source:sourceId||SEED_SOURCES[0].id,
+  meaning:"",example:"",pos:"",ipa:"",needsReview:NEEDS_REVIEW.has(w),active:true,createdAt:Date.now(),
+  isMultiword:/\s/.test(lw),isHyphenated:/-/.test(lw)};
+}
 function seedDB(){
- const cats=CATS.map(n=>({id:uid(),name:n}));
- const catIds=cats.map(c=>c.id);
- const words=RAW.map(r=>newWord(r[0],[catIds[r[1]]],r[2],"src_seed"));
+ DB.categories=[];DB.words=[];
+ const catId={};const ensureCat=n=>{if(!catId[n]){const c={id:uid(),name:n};DB.categories.push(c);catId[n]=c.id}return catId[n]};
+ const byNorm={};let mergedDupes=0,junctionLinks=0,crossSourceLinks=0;
+ const report=[];
+ const loadSource=(RAWobj,srcId)=>{
+  let listed=0,created=0,linked=0,dupInSrc=0;
+  for(const[cat,items]of Object.entries(RAWobj)){
+   const cid=ensureCat(cat);
+   for(const w of items){
+    listed++;
+    const key=normOf(w),ex=byNorm[key];
+    if(ex){ // canonical-word model: no duplicate records, only category junctions
+     if(ex.categories.includes(cid)){dupInSrc++;mergedDupes++}
+     else{ex.categories.push(cid);junctionLinks++;linked++}
+     if(ex.source!==srcId)crossSourceLinks++;
+     continue;
+    }
+    const rec=newWord(w,[cid],srcId);
+    byNorm[key]=rec;DB.words.push(rec);created++;
+   }
+  }
+  report.push({sourceId:srcId,listed,created,linked,dupInSrc});
+ };
+ loadSource(RAW,SEED_SOURCES[0].id);
+ loadSource(RAW2,SEED_SOURCES[1].id);
  const now=Date.now();
- DB={users:[],currentUserId:null,words,categories:cats,
-  sources:[{id:"src_seed",name:"IELTS Listening Vocabulary — 1200 Repeated Words",type:"PDF",fileName:"1200_most_commonly_repeated_words.pdf",createdAt:now},{id:"src_admin",name:"Admin Added",type:"Manual",createdAt:now},{id:"src_user",name:"User Added",type:"Import",createdAt:now}],
-  attempts:[],mistakes:[],progress:{},sessions:[],lists:[],dailyDone:{},streaks:{},xp:{},achievements:{},settings:{}};
  const mk=(name,email,pass,role)=>({id:uid(),name,email,pass,role,createdAt:now,settings:{theme:"light",accent:"british",voice:"",speed:1,dailyGoal:30,strict:true,practiceDefault:"listen",hideLeaderboard:false,targetExam:"IELTS",targetBand:"",currentBand:""}});
- DB.users.push(mk("Admin","admin@spellmaster.app","admin123","admin"));
+ DB={users:[],currentUserId:null,words:DB.words,categories:DB.categories,
+  sources:[...SEED_SOURCES.map(s=>({...s,createdAt:now})),{id:"src_admin",name:"Admin Added",type:"Manual",createdAt:now},{id:"src_user",name:"User Added",type:"Import",createdAt:now}],
+  attempts:[],mistakes:[],progress:{},sessions:[],lists:[],dailyDone:{},streaks:{},xp:{},achievements:{},settings:{},
+  seedMeta:{sources:report,unique:DB.words.length,mergedDupes,junctionLinks,crossSourceLinks,categories:DB.categories.length,importedAt:now}};
+ const admin=mk("Admin","admin@spellmaster.app","admin123","admin");
+ DB.users.push(admin);
  const demo=mk("Demo Learner","demo@spellmaster.app","demo123","user");
  DB.users.push(demo);
  generateDemoHistory(demo.id);
@@ -276,14 +340,14 @@ function seedDB(){
 }
 function generateDemoHistory(uid){
  // Clearly-labeled demo account with generated history so charts/analytics are explorable.
- const words=DB.words.filter(w=>!w.isMultiword);
- let t=Date.now()-14*864e5;
+ const words=DB.words;
+ let base=Date.now()-14*864e5;
  for(let d=14;d>=1;d--){
-  const day=words.slice(hashStr("day"+d)%40,hashStr("day"+d)%40+8+ (d%5));
+  const off=hashStr("day"+d)%300;
+  const day=words.slice(off,off+8+(d%5));
   for(const w of day){
    const correct=Math.random()>0.28;
-   const rt=3000+Math.random()*5000;
-   recordAttempt(uid,w,correct,correct?w.display:w.display.replace(/[aeiou]/,"a"),rt,"listen",new Date(t+d*864e5));
+   recordAttempt(uid,w,correct,correct?w.display:w.display.replace(/[aeiou]/,"a"),3000+Math.random()*5000,"listen",base+d*864e5);
   }
  }
 }
@@ -296,6 +360,7 @@ const pkey=(u,w)=>u+":"+w;
 function getProg(u,wid){const k=pkey(u,wid);if(!DB.progress[k])DB.progress[k]={attempts:0,correct:0,incorrect:0,accuracy:0,streak:0,status:"new",interval:0,ease:2.5,lastAttemptedAt:null,nextReviewAt:null};return DB.progress[k]}
 const userAttempts=u=>DB.attempts.filter(a=>a.userId===u);
 const userMistakes=u=>DB.mistakes.filter(m=>m.userId===u);
+const catName=id=>(DB.categories.find(c=>c.id===id)||{}).name||"";
 
 /* ============================ SPELLING ENGINE ============================ */
 const ERRTYPES={
@@ -303,7 +368,7 @@ const ERRTYPES={
  double_consonant:"Double Consonant Error",double_vowel:"Double Vowel Error",wrong_ending:"Wrong Ending",
  wrong_prefix:"Wrong Prefix",spacing:"Spacing Error",hyphenation:"Hyphenation Error",capitalization:"Capitalization Error"
 };
-function levenshteinOps(a,b){ // ops transforming user string a into correct string b
+function levenshteinOps(a,b){
  const m=a.length,n=b.length,dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
  for(let i=0;i<=m;i++)dp[i][0]=i;for(let j=0;j<=n;j++)dp[0][j]=j;
  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)dp[i][j]=Math.min(dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1),dp[i-1][j]+1,dp[i][j-1]+1);
@@ -319,48 +384,43 @@ function analyzeSpelling(correctRaw,attemptRaw,opts={}){
  const strict=opts.strict!==false;
  const cR=String(correctRaw).trim(),aR=String(attemptRaw).trim();
  const strip=s=>s.toLowerCase().replace(/[\s\-–—_]/g,"");
- const notes=[];
  if(strip(cR)===strip(aR)){
-  if(cR===aR)return{correct:true,editDistance:0,mistakes:[]};
+  if(cR===aR)return{correct:true,editDistance:0,mistakes:[],notes:[]};
   let issues=[];
-  if(cR.toLowerCase()===aR.toLowerCase())issues.push({type:"capitalization"});
-  else if((cR.match(/-/g)||[]).join("")!==(aR.match(/-/g)||[]).join(""))issues.push({type:"hyphenation"});
-  else issues.push({type:"spacing"});
-  const punctuationOnly=!strict; // flexible mode accepts punctuation/case variation
-  return{correct:punctuationOnly,editDistance:1,mistakes:strict?issues.map(x=>({type:x.type,explanation:explain(x.type,cR,aR)})):[],notes:issues.map(x=>ERRTYPES[x.type])};
+  if(cR.toLowerCase()===aR.toLowerCase())issues.push("capitalization");
+  else if((cR.match(/-/g)||[]).join("")!==(aR.match(/-/g)||[]).join(""))issues.push("hyphenation");
+  else issues.push("spacing");
+  return{correct:!strict,editDistance:1,mistakes:strict?issues.map(t=>({type:t,explanation:explain(t,cR,aR,null)})):[],notes:issues.map(t=>ERRTYPES[t])};
  }
  let c=cR.toLowerCase(),a=aR.toLowerCase();
  if(!strict){c=c.replace(/-/g," ");a=a.replace(/-/g," ")}
  const{dist,ops}=levenshteinOps(a,c);
- // transposition: single adjacent swap
  let transposed=-1;
- if(dist===2&&Math.abs(a.length-c.length)===0){
+ if(dist===2&&a.length===c.length){
   for(let i=0;i<c.length-1;i++){if(c.slice(0,i)+c[i+1]+c[i]+c.slice(i+2)===a){transposed=i;break}}
  }
  const mistakes=[];
  if(transposed>=0){
-  mistakes.push({type:"transposition",position:transposed,expected:c[transposed]+c[transposed+1],actual:a[transposed]+a[transposed+1],explanation:`You reversed the order of "${c[transposed]}" and "${c[transposed+1]}" — it should be "${c[transposed]}${c[transposed+1]}", not "${a[transposed]}${a[transposed+1]}".`});
+  mistakes.push({type:"transposition",position:transposed,expected:c[transposed]+c[transposed+1],actual:a[transposed]+a[transposed+1],
+   explanation:`You reversed the order of "${c[transposed]}" and "${c[transposed+1]}" — it should be "${c[transposed]}${c[transposed+1]}", not "${a[transposed]}${a[transposed+1]}".`});
  }else{
-  const errPositions=ops.filter(o=>o.op!=="match").map(o=>o.bj??c.length);
-  const minPos=Math.min(...errPositions,c.length),maxPos=Math.max(...errPositions,-1);
-  const allAtEnd=maxPos>=c.length-3&&maxPos<c.length+1;
-  const allAtStart=minPos<=2;
+  const errPos=ops.filter(o=>o.op!=="match").map(o=>o.bj??c.length);
+  const minPos=Math.min(...errPos,c.length),maxPos=Math.max(...errPos,-1);
+  const atEnd=maxPos>=c.length-3&&maxPos<c.length+1,atStart=minPos<=2;
   for(const o of ops){
    if(o.op==="match")continue;
    let type;
    if(o.op==="missing"){
     const prevSame=o.bj>0&&c[o.bj-1]===o.bChar,nextSame=o.bj<c.length-1&&c[o.bj+1]===o.bChar;
-    if(prevSame||nextSame)type=isVowel(o.bChar)?"double_vowel":"double_consonant";
-    else type="missing_letter";
+    type=(prevSame||nextSame)?(isVowel(o.bChar)?"double_vowel":"double_consonant"):"missing_letter";
    }else if(o.op==="extra")type="extra_letter";
    else type="wrong_letter";
-   if(type==="wrong_letter"&&allAtEnd&&c.length>=4)type="wrong_ending";
-   if(type==="wrong_letter"&&allAtStart&&c.length>=4&&mistakes.every(m=>m.type!=="wrong_ending"))type="wrong_prefix";
+   if(type==="wrong_letter"&&atEnd&&c.length>=4)type="wrong_ending";
+   else if(type==="wrong_letter"&&atStart&&c.length>=4)type="wrong_prefix";
    mistakes.push({type,position:o.bj??o.ai,expected:o.bChar,actual:o.aChar,explanation:explain(type,cR,aR,o)});
   }
  }
- const correct=mistakes.length===0;
- return{correct,editDistance:dist,mistakes};
+ return{correct:mistakes.length===0,editDistance:dist,mistakes,notes:[]};
 }
 function explain(type,c,a,o){
  switch(type){
@@ -378,14 +438,10 @@ function explain(type,c,a,o){
  }
  return"Spelling difference detected.";
 }
-/* visual diff tokens */
 function diffTokens(correct,attempt,opts={}){
  const res=analyzeSpelling(correct,attempt,opts);
- if(res.correct&&res.mistakes.length===0)return{ok:true,rows:null};
- let c=correct.trim(),a=attempt.trim();
- const lc=c.toLowerCase(),la=a.toLowerCase();
- if(!opts.strict!==false){} // noop guard
- c=lc;a=la;
+ if(res.correct&&res.mistakes.length===0)return{ok:true};
+ let c=correct.trim().toLowerCase(),a=attempt.trim().toLowerCase();
  if(!opts.strict){c=c.replace(/-/g," ");a=a.replace(/-/g," ")}
  const{ops}=levenshteinOps(a,c);
  const correctRow=[],userRow=[];
@@ -395,7 +451,7 @@ function diffTokens(correct,attempt,opts={}){
   else if(o.op==="extra"){userRow.push({ch:o.aChar,st:"extra"})}
   else{correctRow.push({ch:o.bChar,st:"bad"});userRow.push({ch:o.aChar,st:"bad"})}
  }
- return{ok:false,correctRow,userRow,dist:res.editDistance};
+ return{ok:false,correctRow,userRow};
 }
 function renderDiff(correct,attempt,opts={}){
  const t=diffTokens(correct,attempt,opts);
@@ -413,14 +469,13 @@ function applySRS(p,isCorrect){
  const due=new Date();
  if(isCorrect){
   p.streak++;
-  const idx=clamp(p.streak,1,LADDER.length-1);
-  p.interval=LADDER[idx];
-  p.ease=clamp(p.ease+0.1,1.3,2.8);
+  p.interval=LADDER[clamp(p.streak,1,LADDER.length-1)];
+  p.ease=clamp((p.ease||2.5)+0.1,1.3,2.8);
   due.setDate(due.getDate()+p.interval);
   p.status=(p.streak>=5&&p.interval>=30)?"mastered":(p.interval>=7?"review":"learning");
  }else{
-  p.streak=0;p.interval=0;p.ease=clamp(p.ease-0.2,1.3,2.8);
-  due.setMinutes(due.getMinutes()+10); // review again soon
+  p.streak=0;p.interval=0;p.ease=clamp((p.ease||2.5)-0.2,1.3,2.8);
+  due.setMinutes(due.getMinutes()+10);
   p.status="difficult";
  }
  p.nextReviewAt=due.getTime();
@@ -441,27 +496,27 @@ function recordAttempt(userId,word,isCorrect,userAnswer,rtMs,mode,at){
  }
  return aid;
 }
-function addXP(uid2,amount){DB.xp[uid2]=(DB.xp[uid2]||0)+amount}
+function addXP(id,amount){DB.xp[id]=(DB.xp[id]||0)+amount}
 const getX=u=>DB.xp[u]||0;
 const levelOf=x=>Math.floor(Math.sqrt(x/100))+1;
-function updateStreak(uid2){
- const today=todayISO(),s=DB.streaks[uid2]||{current:0,longest:0,lastDate:null};
+function updateStreak(id){
+ const today=todayISO(),s=DB.streaks[id]||{current:0,longest:0,lastDate:null};
  if(s.lastDate===today)return s;
  const y=new Date();y.setDate(y.getDate()-1);
- if(s.lastDate===todayISO(y))s.current++;else s.current=1;
- s.longest=Math.max(s.longest,s.current);s.lastDate=today;DB.streaks[uid2]=s;return s;
+ s.current=(s.lastDate===todayISO(y))?s.current+1:1;
+ s.longest=Math.max(s.longest,s.current);s.lastDate=today;DB.streaks[id]=s;return s;
 }
 function userStats(u){
  const at=userAttempts(u),pg=Object.keys(DB.progress).filter(k=>k.startsWith(u+":")).map(k=>DB.progress[k]);
  const today=todayISO();
  const todayAttempts=at.filter(a=>todayISO(a.createdAt)===today);
- const due=DB.words.filter(w=>w.active&&w.source).filter(w=>{const p=DB.progress[pkey(u,w.id)];return p&&p.status!=="new"&&p.status!=="mastered"&&p.nextReviewAt&&p.nextReviewAt<=Date.now()}).length;
+ const wk=at.filter(a=>a.createdAt>Date.now()-7*864e5),pw=at.filter(a=>a.createdAt<=Date.now()-7*864e5&&a.createdAt>Date.now()-14*864e5);
+ const due=DB.words.filter(w=>{const p=DB.progress[pkey(u,w.id)];return p&&p.status!=="new"&&p.status!=="mastered"&&p.nextReviewAt&&p.nextReviewAt<=Date.now()}).length;
  return{totalAttempts:at.length,todayWords:todayAttempts.length,accuracy:pct(at.filter(a=>a.isCorrect).length,at.length),
   practiced:new Set(at.map(a=>a.wordId)).size,mastered:pg.filter(p=>p.status==="mastered").length,
   difficult:pg.filter(p=>p.status==="difficult").length,learning:pg.filter(p=>p.status==="learning"||p.status==="review").length,
-  totalMistakes:userMistakes(u).length,due,weekWords:at.filter(a=>a.createdAt>Date.now()-7*864e5).length,
-  weekAcc:pct(at.filter(a=>a.createdAt>Date.now()-7*864e5&&a.isCorrect).length,Math.max(1,at.filter(a=>a.createdAt>Date.now()-7*864e5).length)),
-  prevAcc:pct(at.filter(a=>a.createdAt>Date.now()-14*864e5&&a.createdAt<=Date.now()-7*864e5&&a.isCorrect).length,Math.max(1,at.filter(a=>a.createdAt>Date.now()-14*864e5&&a.createdAt<=Date.now()-7*864e5).length))};
+  totalMistakes:userMistakes(u).length,due,weekWords:wk.length,
+  weekAcc:pct(wk.filter(a=>a.isCorrect).length,wk.length),prevAcc:pct(pw.filter(a=>a.isCorrect).length,pw.length)};
 }
 function mistakePatterns(u){
  const ms=userMistakes(u);if(!ms.length)return[];
@@ -480,12 +535,12 @@ function insights(u){
  const st=DB.streaks[u];if(st&&st.current>=3)out.push({icon:"flame",text:`You're on a ${st.current}-day streak — don't break it!`});
  return out;
 }
-/* achievements */
 const ACH=[
  {id:"s1",name:"First Steps",desc:"Complete your first practice session",icon:"star",test:s=>s.sessions>=1},
  {id:"w10",name:"Warming Up",desc:"Practice 10 different words",icon:"book",test:s=>s.practiced>=10},
  {id:"w50",name:"Half Century",desc:"Practice 50 different words",icon:"book",test:s=>s.practiced>=50},
  {id:"w100",name:"Word Explorer",desc:"Practice 100 different words",icon:"book",test:s=>s.practiced>=100},
+ {id:"w500",name:"Vocabulary Veteran",desc:"Practice 500 different words",icon:"book",test:s=>s.practiced>=500},
  {id:"m10",name:"Word Master",desc:"Master 10 words",icon:"trophy",test:s=>s.mastered>=10},
  {id:"m50",name:"Grandmaster",desc:"Master 50 words",icon:"trophy",test:s=>s.mastered>=50},
  {id:"st3",name:"On Fire",desc:"3-day streak",icon:"flame",test:s=>s.streak>=3},
@@ -509,7 +564,7 @@ function checkAchievements(u){
 const TTS={voices:[],load(){if(!("speechSynthesis" in window))return;const f=()=>{TTS.voices=speechSynthesis.getVoices().filter(v=>/^en(-|_)?/i.test(v.lang))};f();speechSynthesis.onvoiceschanged=f},
  speak(text,{rate=1,lang}={}){
   const st=userSettings();
-  if(!("speechSynthesis" in window)){toast("Speech synthesis isn't supported in this browser. Read the hint below instead.","warn");return false}
+  if(!("speechSynthesis" in window)){toast("Speech synthesis isn't supported in this browser.","warn");return false}
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
   const wantLang=lang||(st.accent==="american"?"en-US":"en-GB");
@@ -531,12 +586,11 @@ function modal(title,body,onOpen){
 function closeModal(){$("#modal-root").innerHTML=""}
 const statusChip=s=>`<span class="chip ${s}">${s[0].toUpperCase()+s.slice(1)}</span>`;
 function skeleton(rows=4,cols=4){return`<div class="card pad">${Array.from({length:rows},()=>`<div class="grid" style="grid-template-columns:repeat(${cols},1fr);margin-bottom:10px">${Array.from({length:cols},()=>`<div class="skel" style="height:20px">&nbsp;</div>`).join("")}</div>`).join("")}</div>`}
-/* canvas charts */
 function prepCanvas(cv){const dpr=window.devicePixelRatio||1;const w=cv.clientWidth||600,h=cv.clientHeight||220;cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext("2d");ctx.scale(dpr,dpr);return{ctx,w,h}}
-function chartAxes(ctx,w,h,max){ctx.strokeStyle=getCSS("--line");ctx.fillStyle=getCSS("--muted");ctx.font="11px sans-serif";ctx.beginPath();ctx.moveTo(34,8);ctx.lineTo(34,h-24);ctx.lineTo(w-8,h-24);ctx.stroke();for(let i=0;i<=4;i++){const y=8+(h-32)*i/4;ctx.fillText(Math.round(max*(4-i)/4),4,y+4)}}
 const getCSS=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function chartAxes(ctx,w,h,max){ctx.strokeStyle=getCSS("--line");ctx.fillStyle=getCSS("--muted");ctx.font="11px sans-serif";ctx.beginPath();ctx.moveTo(34,8);ctx.lineTo(34,h-24);ctx.lineTo(w-8,h-24);ctx.stroke();for(let i=0;i<=4;i++){const y=8+(h-32)*i/4;ctx.fillText(Math.round(max*(4-i)/4),4,y+4)}}
 function drawBars(cv,labels,values,color){
- const{ctx,w,h}=prepCanvas(cv);const max=Math.max(...values,1);
+ if(!cv)return;const{ctx,w,h}=prepCanvas(cv);const max=Math.max(...values,1);
  chartAxes(ctx,w,h,max);
  const n=labels.length,bw=Math.min(46,(w-60)/n*0.65),gap=(w-60)/n;
  values.forEach((v,i)=>{
@@ -548,7 +602,7 @@ function drawBars(cv,labels,values,color){
  });
 }
 function drawLine(cv,labels,values,color){
- const{ctx,w,h}=prepCanvas(cv);const max=Math.max(...values,1);
+ if(!cv)return;const{ctx,w,h}=prepCanvas(cv);const max=Math.max(...values,1);
  chartAxes(ctx,w,h,max);
  const pts=values.map((v,i)=>[40+(w-60)*i/Math.max(1,values.length-1),8+(h-32)*(1-v/max)]);
  ctx.strokeStyle=color||getCSS("--brand");ctx.lineWidth=2.5;ctx.beginPath();
@@ -559,26 +613,21 @@ function drawLine(cv,labels,values,color){
 }
 
 /* ============================ ROUTER ============================ */
-let session=null; // active practice session (also persisted)
+let session=null;
 function navigate(hash){location.hash=hash}
-function route(){const h=location.hash.replace(/^#/,"")||"/";const parts=h.split("/").filter(Boolean);return{path:h,parts}}
+function route(){const h=location.hash.replace(/^#/,"")||"/";return{path:h,parts:h.split("/").filter(Boolean)}}
 function render(){
  const u=curUser();const r=route();
  document.documentElement.dataset.theme=u?(u.settings.theme==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):u.settings.theme):"light";
  TTS.stop();
- if(!u){renderPublic(r);return}
  session=loadSession();
+ if(!u){renderPublic(r);return}
  renderApp(r,u);
- saveSession();
  window.scrollTo(0,0);
 }
-/* public pages */
 function renderPublic(r){
- const app=$("#app");
- if(r.parts[0]==="login"||r.parts[0]==="register"){
-  app.innerHTML=authPage(r.parts[0]);wireAuth();return;
- }
- app.innerHTML=landingPage();
+ if(r.parts[0]==="login"||r.parts[0]==="register"){$("#app").innerHTML=authPage(r.parts[0]);wireAuth();return}
+ $("#app").innerHTML=landingPage();
 }
 function landingPage(){return`
  <div style="border-bottom:1px solid var(--line)">
@@ -591,13 +640,14 @@ function landingPage(){return`
   <span class="chip new" style="margin-bottom:16px">${ic("flame",14)} Built for IELTS Listening spelling</span>
   <h1>Fix Your Spelling.<br/>One Mistake at a Time.</h1>
   <p>Practice spelling, understand your recurring mistakes, and build long-term accuracy with spaced repetition.</p>
-  <div class="row" style="justify-content:center;gap:12px">
+  <div class="row" style="justify-content:center;gap:12px;flex-wrap:wrap">
    <a class="btn primary big" href="#/register">Start Practicing</a>
    <a class="btn big" href="#/explore">Explore Vocabulary</a>
   </div>
+  <p class="small muted" style="margin-top:14px">${DB.words.length} words · ${DB.categories.length} categories · from two IELTS Listening vocabulary PDF sources</p>
  </section>
  <div class="featgrid">
-  ${[["flame","Listen & Type","Hear the word, type it, check it — the classic IELTS dictation loop with full audio control."],
+  ${[["play","Listen & Type","Hear the word, type it, check it — the classic IELTS dictation loop with full audio control."],
    ["target","Mistake Analysis","Every wrong answer is decomposed: missing letters, double consonants, transpositions and more."],
    ["clock","Spaced Repetition","Words you get wrong come back sooner. Mastered words fade out on a proven schedule."],
    ["chart","Progress Tracking","Accuracy trends, mastery counts, streaks and weekly charts from your real data."],
@@ -609,7 +659,7 @@ function landingPage(){return`
   <h2 style="margin-bottom:8px">How It Works</h2>
   <div class="steps">
    ${["Listen to a word in British or American English.","Type the spelling from memory — no hints in strict mode.","Submit and see a character-level visual diff of what went wrong.","Your mistake is classified and added to your error profile.","Spaced repetition resurfaces weak words at the right time.","Repeat the pattern until the mistake is eliminated."]
-   .map(s=>`<div class="step"><div><strong>${s}</strong></div></div>`).join("")}
+   .map((s,i)=>`<div class="step"><b>${i+1}</b><div><strong>${s}</strong></div></div>`).join("")}
   </div>
   <div class="card pad" style="margin-top:26px;text-align:center">
    <h2>Ready to eliminate your spelling mistakes?</h2>
@@ -617,7 +667,7 @@ function landingPage(){return`
    <a class="btn primary big" href="#/register">Start Practicing</a>
   </div>
  </section>
- <footer class="muted small" style="text-align:center;padding:26px;border-top:1px solid var(--line)">SpellMaster Pro — a personalized spelling-learning platform. Vocabulary described as IELTS-oriented study material, not official IELTS content.</footer>`}
+ <footer class="muted small" style="text-align:center;padding:26px;border-top:1px solid var(--line)">SpellMaster Pro — vocabulary described as user-provided IELTS-oriented study material, not official IELTS content.</footer>`}
 function authPage(mode){
  return`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
  <div class="card pad" style="width:100%;max-width:420px">
@@ -643,11 +693,10 @@ function wireAuth(){
   if(mode==="register"){
    if(DB.users.some(u=>u.email===email))return toast("An account with this email already exists.","err");
    const wasGuest=DB.currentUserId==="guest";
-   const u={id:uid(),name:$("#af-name").value.trim()||email.split("@")[0],email,pass,role:"user",createdAt:Date.now(),
-    settings:{theme:"light",accent:"british",voice:"",speed:1,dailyGoal:30,strict:true,practiceDefault:"listen",hideLeaderboard:false,targetExam:"IELTS",targetBand:"",currentBand:""}};
-   DB.users.push(u);
-   if(wasGuest)reassignGuestData(u.id);
-   DB.currentUserId=u.id;saveDB();toast("Account created. Welcome!","ok");navigate("/dashboard");
+   DB.users.push({id:uid(),name:$("#af-name").value.trim()||email.split("@")[0],email,pass,role:"user",createdAt:Date.now(),
+    settings:{theme:"light",accent:"british",voice:"",speed:1,dailyGoal:30,strict:true,practiceDefault:"listen",hideLeaderboard:false,targetExam:"IELTS",targetBand:"",currentBand:""}});
+   if(wasGuest)reassignGuestData(DB.users[DB.users.length-1].id);
+   DB.currentUserId=DB.users[DB.users.length-1].id;saveDB();toast("Account created. Welcome!","ok");navigate("/dashboard");
   }else{
    const u=DB.users.find(u=>u.email===email&&u.pass===pass);
    if(!u)return toast("Incorrect email or password.","err");
@@ -657,11 +706,10 @@ function wireAuth(){
    saveDB();toast(`Welcome back, ${u.name}!`,"ok");navigate("/dashboard");
   }
  });
- const f=$("#forgot");if(f)f.onclick=e=>{e.preventDefault();modal("Password Reset",`<p class="muted small">This single-file app stores credentials locally, so there's no email service. Ask the device owner to reset the entry in localStorage, or create a new account.</p><div class="mfoot"><button class="btn primary" data-act="close-modal">Got it</button></div>`)};
+ const f=$("#forgot");if(f)f.onclick=e=>{e.preventDefault();modal("Password Reset",`<p class="muted small">This single-file app stores credentials locally, so there's no email service. Create a new account, or ask the device owner to reset the entry in localStorage.</p><div class="mfoot"><button class="btn primary" data-act="close-modal">Got it</button></div>`)};
 }
 function reassignGuestData(newId){
- const old="guest";
- const map=o=>{if(o.userId===old)o.userId=newId};
+ const old="guest";const map=o=>{if(o.userId===old)o.userId=newId};
  DB.attempts.forEach(map);DB.mistakes.forEach(map);DB.sessions.forEach(map);DB.lists.forEach(map);
  Object.keys(DB.progress).forEach(k=>{if(k.startsWith(old+":")){DB.progress[newId+k.slice(old.length)]=DB.progress[k];delete DB.progress[k]}});
  ["dailyDone","streaks","xp","achievements"].forEach(t=>{if(DB[t][old]){DB[t][newId]=DB[t][old];delete DB[t][old]}});
@@ -673,13 +721,12 @@ const NAV=[["dashboard","Dashboard","home"],["practice","Practice","play"],["mis
 const ADMINNAV=[["admin","Admin Dashboard","shield"],["admin/vocab","Vocabulary","edit"],["admin/import","Import","upload"],["admin/analytics","Analytics","chart"]];
 function renderApp(r,u){
  const active=r.parts[0]||"dashboard";
- const s=userStats(u);const st=userSettings();
- const dueCount=s.due;
+ const s=userStats(u);
  const notifs=[];
- if(dueCount>0)notifs.push(`${dueCount} difficult word${dueCount>1?"s are":" is"} ready for review.`);
- if((DB.streaks[u.id]||{}).current>=3)notifs.push(`You're on a ${(DB.streaks[u.id]).current}-day streak.`);
+ if(s.due>0)notifs.push(`${s.due} difficult word${s.due>1?"s are":" is"} ready for review.`);
+ if((DB.streaks[u.id]||{}).current>=3)notifs.push(`You're on a ${DB.streaks[u.id].current}-day streak.`);
  notifs.push("Your daily spelling practice is waiting.");
- const side=(items)=>items.map(n=>`<a class="navlink ${active===n[0]||(n[0]==="practice"&&active==="session")?"active":""}" href="#/${n[0]}">${ic(n[2])} ${n[1]}</a>`).join("");
+ const side=items=>items.map(n=>`<a class="navlink ${active===n[0]||(n[0]==="practice"&&active==="session")?"active":""}" href="#/${n[0]}">${ic(n[2])} ${n[1]}</a>`).join("");
  $("#app").innerHTML=`<div class="shell">
   <nav class="sidebar" id="sidebar" aria-label="Main navigation">
    <div class="brand"><span style="color:var(--brand)">${icF("check")}</span> SpellMaster</div>
@@ -695,7 +742,7 @@ function renderApp(r,u){
      <div id="gsearch-res" class="searchres" style="display:none"></div>
     </div>
     <div class="bellwrap">
-     <button class="btn" id="bell" aria-label="Notifications" style="position:relative">${ic("bell")}${dueCount?`<span style="position:absolute;top:-4px;right:-4px;background:var(--bad);color:#fff;border-radius:99px;font-size:10px;padding:1px 5px;font-weight:700">${dueCount}</span>`:""}</button>
+     <button class="btn" id="bell" aria-label="Notifications" style="position:relative">${ic("bell")}${s.due?`<span style="position:absolute;top:-4px;right:-4px;background:var(--bad);color:#fff;border-radius:99px;font-size:10px;padding:1px 5px;font-weight:700">${s.due}</span>`:""}</button>
      <div id="bellpanel" class="bellpanel" style="display:none">${notifs.map(n=>`<div class="small" style="padding:7px 4px;border-bottom:1px solid var(--line)">${esc(n)}</div>`).join("")}</div>
     </div>
     <a href="#/settings" aria-label="Profile settings"><span class="avatar">${esc((u.name[0]||"U").toUpperCase())}</span></a>
@@ -708,17 +755,15 @@ function renderApp(r,u){
  </div>`;
  $("#burger").onclick=()=>$("#sidebar").classList.toggle("open");
  $("#bell").onclick=e=>{e.stopPropagation();const p=$("#bellpanel");p.style.display=p.style.display==="none"?"block":"none"};
- document.addEventListener("click",e=>{const p=$("#bellpanel");if(p&&!e.target.closest(".bellwrap"))p.style.display="none"});
  $("#gsearch").addEventListener("input",debounce(e=>globalSearch(e.target.value),180));
  dispatchView(r,u);
 }
 function dispatchView(r,u){
- const v=$("#view");
- const p=r.parts;
+ const v=$("#view"),p=r.parts;
  try{
   if(!p[0]||p[0]==="dashboard")return vDashboard(v,u);
   if(p[0]==="practice")return vPractice(v,u,r);
-  if(p[0]==="session")return vSessionResume(v,u);
+  if(p[0]==="session")return session?renderSessionView(v):navigate("/practice");
   if(p[0]==="result")return vResult(v,u,p[1]);
   if(p[0]==="mistakes")return vMistakes(v,u);
   if(p[0]==="vocabulary")return p[1]?vWordDetail(v,u,p[1]):vVocab(v,u);
@@ -733,23 +778,21 @@ function dispatchView(r,u){
   v.innerHTML=`<div class="empty">${ic("search")}<h2>Page not found</h2><p><a href="#/dashboard">Back to dashboard</a></p></div>`;
  }catch(err){console.error(err);v.innerHTML=`<div class="empty">${ic("x")}<h2>Something went wrong</h2><p class="small muted">Unable to load this page. Please try again.</p></div>`}
 }
-/* global search */
 function globalSearch(q){
  const box=$("#gsearch-res");q=q.trim().toLowerCase();
  if(!q){box.style.display="none";return}
  const u=curUser().id;
- const words=DB.words.filter(w=>w.active&&(w.normalized.includes(q.replace(/[^a-z0-9]/g,""))||w.word.includes(q))).slice(0,7);
+ const words=DB.words.filter(w=>w.active&&(w.word.includes(q)||w.normalized.includes(q.replace(/[^a-z0-9]/g,""))||w.categories.some(c=>catName(c).toLowerCase().includes(q)))).slice(0,7);
  const lists=DB.lists.filter(l=>l.userId===u&&l.name.toLowerCase().includes(q)).slice(0,3);
  const mistakes=userMistakes(u).filter(m=>m.correctAnswer.toLowerCase().includes(q)).slice(0,3);
  if(!words.length&&!lists.length&&!mistakes.length){box.innerHTML=`<div class="sr muted">No matching results found.</div>`;box.style.display="block";return}
  box.innerHTML=
-  words.map(w=>`<div class="sr" data-gs="w:${w.id}"><strong>${esc(w.display)}</strong> <span class="muted small">${w.categories.map(cid=>catName(cid)).filter(Boolean).join(", ")}</span></div>`).join("")+
+  words.map(w=>`<div class="sr" data-gs="w:${w.id}"><strong>${esc(w.display)}</strong> <span class="muted small">${w.categories.map(cid=>catName(cid)).join(", ")}</span></div>`).join("")+
   lists.map(l=>`<div class="sr" data-gs="l:${l.id}">${ic("list",14)} List: <strong>${esc(l.name)}</strong></div>`).join("")+
   mistakes.map(m=>`<div class="sr" data-gs="w:${m.wordId}">${ic("x",14)} Mistake on: <strong>${esc(m.correctAnswer)}</strong></div>`).join("");
  box.style.display="block";
  box.onclick=e=>{const t=e.target.closest("[data-gs]");if(!t)return;const[kind,id]=t.dataset.gs.split(":");box.style.display="none";$("#gsearch").value="";navigate(kind==="w"?"/vocabulary/"+id:"/lists")};
 }
-const catName=id=>(DB.categories.find(c=>c.id===id)||{}).name||"";
 
 /* ============================ DASHBOARD ============================ */
 function vDashboard(v,u){
@@ -762,7 +805,7 @@ function vDashboard(v,u){
  v.innerHTML=`
  <h1>Welcome back, ${esc(u.name.split(" ")[0])} 👋</h1>
  <p class="muted small" style="margin-bottom:16px">${streak>0?`You're on a <strong>${streak}-day streak</strong>. Keep it up!`:"Complete a practice session today to start a streak."}</p>
- <div class="grid g4" style="margin-bottom:16px">
+ <div class="grid g4" style="margin-bottom:14px">
   ${statCard("flame","Current Streak",streak+" day"+(streak===1?"":"s"))}
   ${statCard("target","Today's Goal",`${Math.min(s.todayWords,goal)} / ${goal}`,s.todayWords>=goal)}
   ${statCard("check","Accuracy",s.accuracy+"%")}
@@ -798,10 +841,10 @@ function vDashboard(v,u){
  </div>
  <div class="card pad" style="margin-top:16px">
   <h3 style="margin-bottom:10px">Weekly Performance</h3>
-  <canvas id="wk-chart" height="220"></canvas>
+  <canvas id="wk-chart"></canvas>
  </div>`;
  drawWeekly();
- $$("[data-rec]").forEach(b=>b.onclick=()=>{const r=recs[+b.dataset.rec];startSession({mode:r.mode,category:r.category,listId:r.listId,pattern:r.pattern,count:r.count||10,title:r.title})});
+ $$("[data-rec]").forEach(b=>b.onclick=()=>{const r=recs[+b.dataset.rec];startSession({mode:r.mode,category:r.category||"",listId:r.listId||"",pattern:r.pattern||"",count:r.count||10,title:r.title})});
 }
 function statCard(icon,label,val,accent){return`<div class="card stat"><div class="l">${ic(icon,15)} ${label}</div><div class="v" ${accent?'style="color:var(--brand)"':""}>${val}</div></div>`}
 function drawWeekly(){
@@ -819,12 +862,10 @@ function weakWords(u){
  return DB.words.map(w=>({w,p:DB.progress[pkey(u,w.id)]})).filter(x=>x.p&&x.p.attempts>=2&&x.p.accuracy<80&&x.p.status!=="mastered").sort((a,b)=>a.p.accuracy-b.p.accuracy).map(x=>({id:x.w.id,display:x.w.display,p:x.p}));
 }
 function recommendations(u){
- const recs=[];
- const s=userStats(u);
- const pats=mistakePatterns(u);
+ const recs=[],s=userStats(u),pats=mistakePatterns(u);
  if(pats.length)recs.push({mode:"pattern",pattern:pats[0].type,count:10,title:`Practice ${ERRTYPES[pats[0].type]||pats[0].type.replace(/_/g," ")} words`,desc:`Your #1 error pattern (${pats[0].share}% of mistakes)`});
- const missed=userMistakes(u).map(m=>m.wordId);
- if(missed.length)recs.push({mode:"mistakes",count:Math.min(10,new Set(missed).size),title:"Review your recent mistakes",desc:`${new Set(missed).size} words you've misspelled`});
+ const missed=[...new Set(userMistakes(u).map(m=>m.wordId))];
+ if(missed.length)recs.push({mode:"mistakes",count:Math.min(10,missed.length),title:"Review your recent mistakes",desc:`${missed.length} words you've misspelled`});
  if(s.due>0)recs.push({mode:"due",count:Math.min(10,s.due),title:"Words due for review",desc:`${s.due} words scheduled by spaced repetition`});
  recs.push({mode:"listen",count:10,title:"New words practice",desc:"Fresh vocabulary from the library"});
  return recs.slice(0,4);
@@ -860,7 +901,7 @@ function vPractice(v,u,r){
  </div>`;
  const renderExtra=()=>{
   const m=practiceCfg.mode;let html="";
-  if(m==="category")html=`<label for="cfg-cat">Category</label><select id="cfg-cat">${DB.categories.map(c=>`<option value="${c.id}" ${practiceCfg.category===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select>`;
+  if(m==="category")html=`<label for="cfg-cat">Category</label><select id="cfg-cat">${DB.categories.map(c=>`<option value="${c.id}" ${practiceCfg.category===c.id?"selected":""}>${esc(c.name)} (${DB.words.filter(w=>w.categories.includes(c.id)).length} words)</option>`).join("")}</select>`;
   if(m==="list"){const ls=DB.lists.filter(l=>l.userId===u.id);html=ls.length?`<label for="cfg-list">Your list</label><select id="cfg-list">${ls.map(l=>`<option value="${l.id}">${esc(l.name)} (${l.wordIds.length} words)</option>`).join("")}</select>`:`<p class="small muted" style="margin-top:10px">You have no custom lists yet. <a href="#/lists">Create one</a>.</p>`}
   if(m==="pattern"){const pats=mistakePatterns(u.id);html=pats.length?`<label for="cfg-pat">Error pattern</label><select id="cfg-pat">${pats.map(p=>`<option value="${p.type}">${ERRTYPES[p.type]||p.type} — ${p.count} mistakes</option>`).join("")}</select><p class="small muted">Words are chosen from your real mistakes plus similar vocabulary.</p>`:`<p class="small muted" style="margin-top:10px">No mistake patterns recorded yet — make some mistakes first (it's how the system learns!).</p>`}
   if(m==="timed")html=`<label for="cfg-dur">Duration</label><select id="cfg-dur"><option value="30">30 seconds</option><option value="60">60 seconds</option><option value="120">2 minutes</option><option value="300">5 minutes</option></select>`;
@@ -888,15 +929,15 @@ function buildQueue(cfg,userId){
   case"quick":return pick(active,5);
   case"listen":case"read":{
    let pool=cfg.category?active.filter(w=>w.categories.includes(cfg.category)):active;
-   // prioritize due + weak, mix in new
    const due=pool.filter(w=>{const p=P(w);return p&&p.status!=="new"&&p.nextReviewAt&&p.nextReviewAt<=Date.now()});
    const rest=pool.filter(w=>!due.includes(w));
    return[...shuffle(due).slice(0,Math.ceil(cfg.count/2)),...shuffle(rest)].slice(0,cfg.count);
   }
-  case"mistakes":{const ids=[...new Set(userMistakes(userId).map(m=>m.wordId))];return pick(ids.map(wordById).filter(Boolean),cfg.count)}
-  case"due":{const due=active.filter(w=>{const p=P(w);return p&&p.status!=="new"&&p.status!=="mastered"&&p.nextReviewAt&&p.nextReviewAt<=Date.now()});return shuffle(due).slice(0,cfg.count)}
+  case"mistakes":case"due":{
+   if(cfg.mode==="due"){const due=active.filter(w=>{const p=P(w);return p&&p.status!=="new"&&p.status!=="mastered"&&p.nextReviewAt&&p.nextReviewAt<=Date.now()});return shuffle(due).slice(0,cfg.count)}
+   const ids=[...new Set(userMistakes(userId).map(m=>m.wordId))];return pick(ids.map(wordById).filter(Boolean),cfg.count);
+  }
   case"daily":{
-   const seed=hashStr(todayISO());const rng=n=>(hashStr(todayISO()+n)%1000)/1000;
    const missed=[...new Set(userMistakes(userId).map(m=>m.wordId))].map(wordById).filter(Boolean);
    const difficult=active.filter(w=>P(w)&&P(w).status==="difficult");
    const due=active.filter(w=>{const p=P(w);return p&&p.status!=="new"&&p.nextReviewAt&&p.nextReviewAt<=Date.now()});
@@ -931,14 +972,22 @@ function patternWords(type,userId,n){
 function startSession(cfg){
  const u=curUser();
  const pool=cfg.pool||buildQueue(cfg,u.id);
- session={id:uid(),userId:u.id,mode:cfg.mode,title:cfg.title||MODES.find(m=>m[0]===cfg.mode)?.[1]||"Practice",
+ if(!pool.length)return toast("No words available for this mode.","warn");
+ session={id:uid(),userId:u.id,mode:cfg.mode,title:cfg.title||(MODES.find(m=>m[0]===cfg.mode)||["","Practice"])[1],
   queue:pool,category:cfg.category||"",listId:cfg.listId||"",pattern:cfg.pattern||"",idx:0,
-  correct:0,incorrect:0,results:[],startedAt:Date.now(),duration:cfg.duration||0,endsAt:cfg.duration?Date.now()+cfg.duration*1000:0,checked:false,last:null,timerInt:null};
+  correct:0,incorrect:0,results:[],startedAt:Date.now(),lastWordAt:Date.now(),duration:cfg.duration||0,endsAt:cfg.duration?Date.now()+cfg.duration*1000:0,checked:false,last:null,timerInt:null};
  saveSession();navigate("/practice/run");
 }
-function saveSession(){if(session){const c={...session};delete c.timerInt;DB._session=c;saveDB()}else if(DB._session){delete DB._session;saveDB()}}
-function loadSession(){if(!DB._session)return null;if(!DB._session.userId||DB._session.userId!==DB.currentUserId)return null;const s=DB._session;s.timerInt=null;return s}
-function vSessionResume(v,u){if(!session){navigate("/practice");return}renderSessionView(v)}
+function saveSession(){
+ if(session){const c={...session};delete c.timerInt;DB._session=c}
+ else if(DB._session)delete DB._session;
+ saveDB();
+}
+function loadSession(){
+ if(!DB._session)return null;
+ if(DB._session.userId!==DB.currentUserId)return null;
+ const s=DB._session;s.timerInt=null;return s;
+}
 function renderSessionView(v){
  const w=session.queue[session.idx];
  if(!w)return endSession();
@@ -958,9 +1007,9 @@ function renderSessionView(v){
     <button class="btn big" id="slow-btn" aria-label="Play slowly">0.6× Slow</button>
    </div>`}
    ${session.checked?feedbackHTML(w):`
-   <label for="answer-input" class="sr-only" style="position:absolute;left:-9999px">Your answer</label>
-   <input id="answer-input" placeholder="${readMode?"Type the word you saw":"Type the word you hear"}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" ${st.strict?'aria-describedby="strict-note"':""}/>
-   ${st.strict?`<p class="small muted" id="strict-note" style="margin-top:8px">Strict mode: exact spelling required. The answer is hidden until you submit.</p>`:""}
+   <label for="answer-input" style="position:absolute;left:-9999px">Your answer</label>
+   <input id="answer-input" placeholder="${readMode?"Type the word you saw":"Type the word you hear"}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"/>
+   ${st.strict?`<p class="small muted" style="margin-top:8px">Strict mode: exact spelling required. The answer is hidden until you submit.</p>`:""}
    <div class="row" style="justify-content:center;gap:10px;margin-top:16px">
     <button class="btn primary big" id="check-btn" style="min-width:170px">${ic("check")} Check Answer</button>
     ${session.mode==="timed"?`<button class="btn big" id="skip-btn">Skip</button>`:""}
@@ -977,14 +1026,13 @@ function feedbackHTML(w){
   <div class="${r.correct?"pulse":"shake"}" role="status" aria-live="polite">
    ${r.correct?`<h2 style="color:var(--ok)">✓ Correct!</h2><p class="small muted">Correct spelling: <strong class="diff-word">${esc(w.display.toUpperCase())}</strong></p>`:`<h2 style="color:var(--bad)">✗ Not quite</h2>`}
    ${!r.correct?renderDiff(w.display,ans,{strict:userSettings().strict}):""}
-   ${r.mistakes.length?`<div class="explain-box"><strong>Why this was wrong:</strong><ul>${r.mistakes.map(m=>`<li>${esc(m.explanation)}</li>`).join("")}</ul><p class="small" style="margin-top:6px">Mistake type${r.mistakes.length>1?"s":""}: <strong>${r.mistakes.map(m=>ERRTYPES[m.type]||m.type).join(", ")}</strong></p>${hist>1?`<p class="small" style="margin-top:4px">⚠ You have now misspelled this word <strong>${hist+1}</strong> times. It will be scheduled for review.</p>`:""}</div>
+   ${r.mistakes.length?`<div class="explain-box"><strong>Why this was wrong:</strong><ul>${r.mistakes.map(m=>`<li>${esc(m.explanation)}</li>`).join("")}</ul><p class="small" style="margin-top:6px">Mistake type${r.mistakes.length>1?"s":""}: <strong>${r.mistakes.map(m=>ERRTYPES[m.type]||m.type).join(", ")}</strong></p>${hist>0?`<p class="small" style="margin-top:4px">⚠ You have now misspelled this word <strong>${hist+1}</strong> time${hist?"s":""}. It has been scheduled for review.</p>`:""}</div>
    <button class="btn" data-act="similar">${ic("target")} Practice Similar Words</button>`:""}
    ${r.notes&&r.notes.length?`<div class="explain-box" style="background:var(--brand-soft);border-color:var(--brand)"><strong>Note:</strong> ${r.notes.join("; ")} — accepted in flexible mode.</div>`:""}
    <div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary big" id="next-btn">Next Word ${ic("down")}</button></div>
   </div>`;
 }
 function wireSession(w){
- const st=userSettings();
  $("#quit").onclick=e=>{e.preventDefault();if(confirm("End this session? Your answers so far will be saved."))endSession()};
  if(session.mode==="timed"){
   const tick=()=>{if(!session)return;
@@ -997,19 +1045,18 @@ function wireSession(w){
  }
  if(session.checked){
   $("#next-btn").onclick=()=>nextWord();
-  const sim=$("[data-act=similar]");if(sim)sim.onclick=()=>{startSession({mode:"pattern",pattern:session.last.res.mistakes[0]?.type||"double_consonant",count:10,title:"Similar Mistake Practice"})};
-  $("#answer-input")?.focus();
+  const sim=$("[data-act=similar]");if(sim)sim.onclick=()=>{startSession({mode:"pattern",pattern:(session.last.res.mistakes[0]||{}).type||"double_consonant",count:10,title:"Similar Mistake Practice"})};
+  setTimeout(()=>$("#next-btn")?.focus(),60);
   return;
  }
  const input=$("#answer-input");
- if(session.mode==="read"){
-  setTimeout(()=>{const f=$("#flash");if(f)f.style.opacity="0.08";},2000);
- }
- const play=r=>{TTS.speak(w.display,{rate:r});session.checked||input?.focus()};
+ if(session.mode==="read"){setTimeout(()=>{const f=$("#flash");if(f)f.style.opacity="0.08"},2000)}
+ const play=r=>{TTS.speak(w.display,{rate:r});if(!session.checked)input?.focus()};
  $("#play-btn")?.addEventListener("click",()=>play(1));
  $("#replay-btn")?.addEventListener("click",()=>play(1));
  $("#slow-btn")?.addEventListener("click",()=>play(0.6));
  setTimeout(()=>play(1),350);
+ $("#skip-btn")?.addEventListener("click",()=>nextWord());
  $("#check-btn").onclick=submitAnswer;
  input.addEventListener("keydown",e=>{if(e.key==="Enter")submitAnswer()});
  input.focus();
@@ -1019,17 +1066,15 @@ function submitAnswer(){
  const input=$("#answer-input");
  const ans=input.value.trim();
  if(!ans)return toast("Type your answer first.","warn");
- const rt=Date.now()-session.startedAt-(session.results.at(-1)?.startedAt||0);
+ const rt=Date.now()-session.lastWordAt;
  const res=analyzeSpelling(w.display,ans,{strict:userSettings().strict});
  recordAttempt(session.userId,w,res.correct,ans,rt,session.mode);
- session.results.push({wordId:w.id,correctAnswer:w.display,userAnswer:ans,res,startedAt:session.lastWordAt||session.startedAt});
+ session.results.push({wordId:w.id,correctAnswer:w.display,userAnswer:ans,res,startedAt:session.lastWordAt});
  session.lastWordAt=Date.now();
  if(res.correct){session.correct++;addXP(session.userId,10)}else session.incorrect++;
  saveDB();saveSession();
  session.checked=true;session.last={ans,res};
  renderSessionView($("#view"));
- // move focus to next
- setTimeout(()=>$("#next-btn")?.focus(),60);
 }
 function nextWord(){
  session.checked=false;session.last=null;session.idx++;
@@ -1040,26 +1085,24 @@ function endSession(){
  if(!session)return;
  clearInterval(session.timerInt);
  const total=session.results.length;
- const rec={id:session.id,userId:session.userId,practiceMode:session.mode,totalWords:total,completedWords:total,correctCount:session.correct,incorrectCount:session.incorrect,accuracy:pct(session.correct,total),averageResponseTime:total?Math.round(session.results.reduce((s,r)=>s+(Date.now()-(r.startedAt||session.startedAt)),0)/total/100)/10:0,startedAt:session.startedAt,completedAt:Date.now()};
+ const rtSum=session.results.reduce((s,r)=>s+(Date.now()-(r.startedAt||session.startedAt)),0);
+ const rec={id:session.id,userId:session.userId,practiceMode:session.mode,category:session.category,listId:session.listId,pattern:session.pattern,
+  totalWords:total,completedWords:total,correctCount:session.correct,incorrectCount:session.incorrect,accuracy:pct(session.correct,total),
+  averageResponseTime:total?Math.round(rtSum/total/100)/10:0,startedAt:session.startedAt,completedAt:Date.now()};
  if(total>=5)updateStreak(session.userId);
- if(total>0){DB.sessions.push(rec);
-  if(session.correct===total&&total>=10)rec._perfect=true;
-  addXP(session.userId,rec.accuracy>=90?20:5);
+ if(total>0){
+  DB.sessions.push(rec);
+  addXP(session.userId,rec.correctCount*10+(rec.accuracy>=90?20:5));
   if(session.mode==="daily")DB.dailyDone[session.userId]=todayISO();
   checkAchievements(session.userId);
  }
- saveSession=null;// marker
- const sid=rec.id||null;
- session=null;saveDB();saveSession=saveSessionFn; // restore
- navigate(sid?"/result/"+sid:"/dashboard");
+ session=null;saveSession();
+ navigate(total>=5?"/result/"+rec.id:"/dashboard");
 }
-function saveSessionFn(){if(session){const c={...session};delete c.timerInt;DB._session=c;saveDB()}else if(DB._session){delete DB._session;saveDB()}}
-/* patch: ensure saveSession always uses fn */
-var _origSave=saveSession;saveSession=saveSessionFn;
 function vResult(v,u,sid){
  const rec=DB.sessions.find(s=>s.id===sid&&s.userId===u.id);
  if(!rec){navigate("/dashboard");return}
- const mistakeWords=[...new Set(DB.mistakes.filter(m=>m.userId===u.id&&m.attemptId&&DB.attempts.some(a=>a.id===m.attemptId&&a.createdAt>=rec.startedAt)).map(m=>m.wordId))].map(wordById).filter(Boolean);
+ const mistakeWords=[...new Set(DB.mistakes.filter(m=>m.userId===u.id&&m.createdAt>=rec.startedAt&&m.createdAt<=rec.completedAt).map(m=>m.wordId))].map(wordById).filter(Boolean);
  v.innerHTML=`<div style="max-width:560px;margin:0 auto">
   <div class="card pcard">
    <h1>Session Complete 🎉</h1>
@@ -1076,10 +1119,9 @@ function vResult(v,u,sid){
     <a class="btn" href="#/dashboard">Return Dashboard</a>
    </div>
   </div></div>`;
- $("#again-btn").onclick=()=>startSession({mode:rec.practiceMode,category:sessionCfgFrom(rec).category,listId:sessionCfgFrom(rec).listId,pattern:sessionCfgFrom(rec).pattern,count:rec.totalWords||15,title:rec.practiceMode==="listen"?"Listen & Type":rec.practiceMode});
+ $("#again-btn").onclick=()=>startSession({mode:rec.practiceMode,category:rec.category,listId:rec.listId,pattern:rec.pattern,count:Math.max(rec.totalWords,5),title:rec.practiceMode==="listen"?"Listen & Type":rec.practiceMode});
  $("#rev-btn")?.addEventListener("click",()=>startSession({mode:"mistakes",count:Math.max(5,mistakeWords.length),title:"Mistake Review"}));
 }
-function sessionCfgFrom(rec){return{category:rec.category||"",listId:rec.listId||"",pattern:rec.pattern||""}}
 
 /* ============================ MISTAKES PAGE ============================ */
 function vMistakes(v,u){
@@ -1097,7 +1139,7 @@ function vMistakes(v,u){
   <p class="muted small" style="margin-bottom:14px">${ms.length?`${ms.length} recorded mistake${ms.length>1?"s":""} — every one is classified and scheduled for review.`:""}</p>
   <div class="row wrap" style="margin-bottom:14px">${filters.map(f=>`<button class="btn ${cur===f[0]?"primary":""}" data-mf="${f[0]}">${f[1]}</button>`).join("")}
    ${ms.length?`<button class="btn primary" id="pract-mist" style="margin-left:auto">${ic("play")} Practice All Mistakes</button>`:""}</div>
-  <div id="mlist">${list.length?list.map(m=>{const w=wordById(m.wordId);const cnt=ms.filter(x=>x.wordId===m.wordId).length;const p=DB.progress[pkey(u.id,m.wordId)];
+  <div id="mlist">${list.length?list.map(m=>{const cnt=ms.filter(x=>x.wordId===m.wordId).length;
    return`<div class="card pad" style="margin-bottom:12px">
     <div class="row spread wrap">
      <div><a href="#/vocabulary/${m.wordId}"><strong style="font-size:16px">${esc(m.correctAnswer)}</strong></a>
@@ -1115,24 +1157,22 @@ function vMistakes(v,u){
 }
 
 /* ============================ VOCABULARY ============================ */
-let vocabState={q:"",cat:"",source:"",status:"",type:"",page:1,sort:"az"};
+let vocabState={q:"",cat:"",source:"",status:"",type:"",page:1};
 function vVocab(v,u){
  const per=12;
  const render=()=>{
   let list=DB.words.filter(w=>w.active);
-  if(vocabState.q){const q=vocabState.q.toLowerCase();list=list.filter(w=>w.word.includes(q)||w.normalized.includes(q.toLowerCase().replace(/[^a-z0-9]/g,""))||w.categories.some(c=>catName(c).toLowerCase().includes(q)))}
+  if(vocabState.q){const q=vocabState.q.toLowerCase();list=list.filter(w=>w.word.includes(q)||w.normalized.includes(q.replace(/[^a-z0-9]/g,""))||w.categories.some(c=>catName(c).toLowerCase().includes(q)))}
   if(vocabState.cat)list=list.filter(w=>w.categories.includes(vocabState.cat));
   if(vocabState.source)list=list.filter(w=>w.source===vocabState.source);
   if(vocabState.type==="single")list=list.filter(w=>!w.isMultiword&&!w.isHyphenated);
   if(vocabState.type==="phrase")list=list.filter(w=>w.isMultiword);
   if(vocabState.type==="hyphen")list=list.filter(w=>w.isHyphenated);
-  if(vocabState.status){list=list.filter(w=>{const p=DB.progress[pkey(u.id,w.id)];const st=p&&p.attempts?p.status:"new";return st===vocabState.status||(vocabState.status==="difficult"&&p&&p.status==="difficult")})}
-  if(vocabState.sort==="az")list.sort((a,b)=>a.word.localeCompare(b.word));
-  if(vocabState.sort==="za")list.sort((a,b)=>b.word.localeCompare(a.word));
-  if(vocabState.sort==="diff")list.sort((a,b)=>b.difficulty-a.difficulty);
+  if(vocabState.status)list=list.filter(w=>{const p=DB.progress[pkey(u.id,w.id)];const stt=p&&p.attempts?p.status:"new";return stt===vocabState.status});
+  list.sort((a,b)=>a.word.localeCompare(b.word));
   const pages=Math.max(1,Math.ceil(list.length/per));vocabState.page=clamp(vocabState.page,1,pages);
   const slice=list.slice((vocabState.page-1)*per,vocabState.page*per);
-  v.innerHTML=`<div class="row spread wrap"><div><h1>Vocabulary Library</h1><p class="muted small">${list.length} words · ${DB.words.filter(w=>w.active).length} total in database</p></div>
+  v.innerHTML=`<div class="row spread wrap"><div><h1>Vocabulary Library</h1><p class="muted small">${list.length} matching · ${DB.words.filter(w=>w.active).length} total in database · sources: IELTS Listening vocabulary PDFs</p></div>
    ${u.role==="admin"?`<a class="btn" href="#/admin/import">${ic("upload")} Import Vocabulary</a>`:""}</div>
   <div class="card pad" style="margin:14px 0">
    <div class="grid" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr">
@@ -1218,7 +1258,8 @@ function vLists(v,u){
   </div>
   ${l.wordIds.length?`<div class="row wrap" style="margin-top:10px">${l.wordIds.slice(0,14).map(id=>{const w=wordById(id);return w?`<span class="chip neutral" style="margin:2px">${esc(w.display)} <button data-rw="${l.id}:${id}" aria-label="Remove ${esc(w.display)}" style="color:var(--bad);font-weight:700">×</button></span>`:""}).join("")}${l.wordIds.length>14?`<span class="chip neutral">+${l.wordIds.length-14} more</span>`:""}</div>`:`<p class="small muted" style="margin-top:8px">Empty list — add words to start practicing.</p>`}
  </div>`).join(""):`<div class="empty card" style="margin-top:14px">${ic("list")}<h2>No custom lists yet</h2><p>Create your first list to practice difficult words.</p></div>`}`;
- $("#new-list").onclick=()=>modal("Create List",`<label>List name</label><input id="ml-name" placeholder="e.g. My Difficult Words" maxlength="60"/><div class="mfoot"><button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" id="ml-ok">Create</button></div>`,()=>{$("#ml-ok").onclick=()=>{const n=$("#ml-name").value.trim();if(!n)return;DB.lists.push({id:uid(),userId:curUser().id,name:n,wordIds:[],createdAt:Date.now()});saveDB();closeModal();toast("List created.","ok");render()}});render?0:0;
+ $("#new-list").onclick=()=>modal("Create List",`<label>List name</label><input id="ml-name" placeholder="e.g. My Difficult Words" maxlength="60"/><div class="mfoot"><button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" id="ml-ok">Create</button></div>`,()=>{
+  $("#ml-ok").onclick=()=>{const n=$("#ml-name").value.trim();if(!n)return;DB.lists.push({id:uid(),userId:curUser().id,name:n,wordIds:[],createdAt:Date.now()});saveDB();closeModal();toast("List created.","ok");render()}});
  $("#csv-imp").onclick=()=>csvImportModal(()=>render());
  $$("[data-pl]").forEach(b=>b.onclick=()=>{const l=DB.lists.find(x=>x.id===b.dataset.pl);startSession({mode:"list",listId:l.id,count:Math.max(l.wordIds.length,5),title:l.name})});
  $$("[data-aw]").forEach(b=>b.onclick=()=>addWordsModal(b.dataset.aw,()=>render()));
@@ -1265,9 +1306,7 @@ function csvImportModal(done){
    for(let i=start;i<rows.length;i++){
     const[word,meaning,example,category,difficulty]=rows[i].map(c=>(c||"").trim());
     if(!word)continue;
-    const norm=word.toLowerCase();
-    const dup=DB.words.find(w=>w.normalized===norm.replace(/[^a-z0-9]+/g,""));
-    preview.push({word,meaning,example,category,difficulty:clamp(+difficulty||2,1,3),dup:!!dup,status:"ready"});
+    preview.push({word,meaning,example,category,difficulty:clamp(+difficulty||2,1,3),dup:DB.words.some(w=>w.normalized===normOf(word))});
    }
    modal(`Import Preview — ${preview.length} entries`,`
     <div class="row wrap small muted" style="margin-bottom:8px"><span class="chip neutral">${preview.length} entries</span><span class="chip difficult">${preview.filter(p=>p.dup).length} duplicates (skipped)</span><span class="chip mastered">${preview.filter(p=>!p.dup).length} ready to import</span></div>
@@ -1281,12 +1320,11 @@ function csvImportModal(done){
      if(p.dup)continue;
      let catId=null;
      if(p.category){let c=DB.categories.find(c=>c.name.toLowerCase()===p.category.toLowerCase());if(!c){c={id:uid(),name:p.category};DB.categories.push(c)}catId=c.id}
-     DB.words.push({...newWord(p.word,catId?[catId]:[],p.difficulty,"src_user"),meaning:p.meaning,example:p.example});
+     DB.words.push({...newWord(p.word,catId?[catId]:[],"src_user"),meaning:p.meaning,example:p.example});
      imported++;
     }
     saveDB();closeModal();toast(`Vocabulary imported successfully (${imported} words).`,"ok");done&&done();
    }});
-
   };
  });
 }
@@ -1324,15 +1362,14 @@ function vChallenges(v,u){
 /* ============================ PROGRESS ============================ */
 function vProgress(v,u){
  const s=userStats(u);
- const ms=userMistakes(u.id);
- const weekly={};const labels=[],vals=[],vol=[];
+ const labels=[],vals=[],vol=[];
  for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=todayISO(d);
   labels.push(d.getDate());const at=userAttempts(u).filter(a=>todayISO(a.createdAt)===k);
   vals.push(Math.round(pct(at.filter(a=>a.isCorrect).length,at.length)));vol.push(at.length)}
  const pats=mistakePatterns(u.id);
- const masteredOverTime=[];// simple: count of words whose progress reached mastered
+ const totalWords=DB.words.filter(w=>w.active).length;
  v.innerHTML=`<h1>Progress</h1><p class="muted small" style="margin-bottom:14px">All figures computed from your real attempt data.</p>
- <div class="grid g4" style="margin-bottom:16px">
+ <div class="grid g4" style="margin-bottom:14px">
   ${statCard("book","Words Practiced",s.practiced)}${statCard("check","Total Attempts",s.totalAttempts)}
   ${statCard("target","Overall Accuracy",s.accuracy+"%")}${statCard("trophy","Mastered",s.mastered)}
  </div>
@@ -1344,10 +1381,10 @@ function vProgress(v,u){
   <div class="card pad"><h3>Accuracy Trend (14 days)</h3><canvas id="c1"></canvas></div>
   <div class="card pad"><h3>Practice Volume (attempts/day)</h3><canvas id="c2"></canvas></div>
   <div class="card pad"><h3>Mistake Types</h3>${pats.length?`<canvas id="c3"></canvas>`:`<div class="empty" style="padding:26px">${ic("check")}<p>No mistakes recorded yet.</p></div>`}</div>
-  <div class="card pad"><h3>Mastery Progress</h3><canvas id="c4" style="display:none"></canvas>
-   <div style="margin-top:12px">${[["mastered",s.mastered,"var(--ok)"],["review",s.learning,"var(--warn)"],["difficult",s.difficult,"var(--bad)"],["new",Math.max(0,DB.words.filter(w=>w.active).length-s.practiced),"var(--muted)"]].map(r=>`
-    <div style="margin-bottom:10px"><div class="row spread small"><span>${r[0][0].toUpperCase()+r[0].slice(1)}</span><span>${r[1]}</span></div>
-    <div style="height:10px;background:var(--line);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct(r[1],DB.words.filter(w=>w.active).length)}%;background:${r[2]};border-radius:99px"></div></div></div>`).join("")}</div>
+  <div class="card pad"><h3>Mastery Progress</h3>
+   <div style="margin-top:12px">${[["Mastered",s.mastered,"var(--ok)"],["Review",s.learning,"var(--warn)"],["Difficult",s.difficult,"var(--bad)"],["New",Math.max(0,totalWords-s.practiced),"var(--muted)"]].map(r=>`
+    <div style="margin-bottom:10px"><div class="row spread small"><span>${r[0]}</span><span>${r[1]}</span></div>
+    <div style="height:10px;background:var(--line);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct(r[1],totalWords)}%;background:${r[2]};border-radius:99px"></div></div></div>`).join("")}</div>
   </div>
  </div>
  <div class="card pad" style="margin-top:16px"><h3>Learning Insights</h3>
@@ -1370,7 +1407,7 @@ function vLeaderboard(v,u){
   mastered:Object.keys(DB.progress).filter(k=>k.startsWith(x.id+":")&&DB.progress[k].status==="mastered").length,
   streak:(DB.streaks[x.id]||{}).current||0,me:x.id===u.id})).sort((a,b)=>b.xp-a.xp);
  v.innerHTML=`<h1>Leaderboard</h1>
- <p class="muted small" style="margin-bottom:14px">Based on accounts on this device. ${curUser().settings.hideLeaderboard?"You are currently hidden — change this in Settings.":""}</p>
+ <p class="muted small" style="margin-bottom:14px">Based on accounts on this device. ${userSettings().hideLeaderboard?"You are currently hidden — change this in Settings.":""}</p>
  <div class="card" style="overflow:auto"><table><thead><tr><th>Rank</th><th>User</th><th>XP</th><th>Mastered</th><th>Streak</th></tr></thead><tbody>
  ${rows.length?rows.map((r,i)=>`<tr style="${r.me?"background:var(--brand-soft)":""}"><td><strong>#${i+1}</strong></td><td>${esc(r.name)}${r.me?' <span class="chip new">you</span>':""}</td><td>${r.xp}</td><td>${r.mastered}</td><td>${r.streak}d</td></tr>`).join(""):`<tr><td colspan="5"><div class="empty"><p>No entries yet — earn XP to appear here.</p></div></td></tr>`}
  </tbody></table></div>`;
@@ -1414,8 +1451,8 @@ function vSettings(v,u){
   saveDB();document.documentElement.dataset.theme=st.theme==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):st.theme;
   toast("Settings saved.","ok")};
  ["s-name","s-email","s-exam","s-tb","s-cb","s-acc","s-voice","s-goal","s-mode","s-strict","s-theme","s-lb"].forEach(id=>$("#"+id).addEventListener("change",save));
- $("#s-spd").addEventListener("input",e=>$("#spd-v").textContent=e.target.value+"×");$("#s-spd").addEventListener("change",()=>{save()});
- $("#test-voice").onclick=()=>TTS.speak("accommodation, necessary, questionnaire",{rate:1});
+ $("#s-spd").addEventListener("input",e=>$("#spd-v").textContent=e.target.value+"×");$("#s-spd").addEventListener("change",save);
+ $("#test-voice").onclick=()=>TTS.speak("accommodation, necessary, questionnaire, Wednesday",{rate:1});
  $("#reset-data").onclick=()=>{if(confirm("Delete ALL your attempts, mistakes, progress and lists? This cannot be undone.")){
   DB.attempts=DB.attempts.filter(a=>a.userId!==u.id);DB.mistakes=DB.mistakes.filter(m=>m.userId!==u.id);
   DB.sessions=DB.sessions.filter(s=>s.userId!==u.id);DB.lists=DB.lists.filter(l=>l.userId!==u.id);
@@ -1436,24 +1473,34 @@ function vAdmin(v,u,tab){
  if(tab==="analytics")adminAnalytics($("#aview"));
 }
 function adminDash(v){
+ const m=DB.seedMeta||{};
  const activeUsers=new Set(DB.attempts.map(a=>a.userId)).size;
  const totalAttempts=DB.attempts.length;
  const acc=pct(DB.attempts.filter(a=>a.isCorrect).length,totalAttempts);
- const missFreq={};DB.mistakes.forEach(m=>missFreq[m.wordId]=(missFreq[m.wordId]||0)+1);
+ const missFreq={};DB.mistakes.forEach(x=>missFreq[x.wordId]=(missFreq[x.wordId]||0)+1);
  const topMissed=Object.entries(missFreq).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([id,c])=>({w:wordById(id),c}));
- const typeFreq={};DB.mistakes.forEach(m=>typeFreq[m.mistakeType]=(typeFreq[m.mistakeType]||0)+1);
+ const typeFreq={};DB.mistakes.forEach(x=>typeFreq[x.mistakeType]=(typeFreq[x.mistakeType]||0)+1);
  const topTypes=Object.entries(typeFreq).sort((a,b)=>b[1]-a[1]).slice(0,6);
  const catPop={};DB.attempts.forEach(a=>{const w=wordById(a.wordId);if(w)w.categories.forEach(cid=>catPop[cid]=(catPop[cid]||0)+1)});
  const topCats=Object.entries(catPop).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([id,c])=>({n:catName(id)||"?",c}));
  const bySource={};DB.words.forEach(w=>bySource[w.source]=(bySource[w.source]||0)+1);
- v.innerHTML=`<div class="grid g4">
+ v.innerHTML=`
+ <div class="card pad" style="margin-bottom:16px"><h3>Vocabulary Import Report (2 PDF sources)</h3>
+  <div class="grid g4" style="margin-top:10px">
+   ${statCard("book","Unique words",m.unique??"—")}${statCard("list","Categories",m.categories??"—")}
+   ${statCard("x","Merged duplicates",m.mergedDupes??"—")}${statCard("check","Junction links",m.junctionLinks??"—")}
+  </div>
+  ${(m.sources||[]).map(r=>{const s=DB.sources.find(x=>x.id===r.sourceId)||{};return`<div class="small" style="margin-top:8px;padding:6px 0;border-bottom:1px solid var(--line)"><strong>${esc(s.name||r.sourceId)}</strong> — ${r.listed} listed · ${r.created} new canonical words · ${r.linked} cross-category links · ${r.dupInSrc} in-source duplicates merged</div>`}).join("")}
+  <p class="small muted" style="margin-top:8px">${m.crossSourceLinks||0} words appear in both sources (single canonical record, attributed to both) · ${DB.words.filter(w=>w.needsReview).length} flagged needs_review · imported ${m.importedAt?fmtDate(m.importedAt):"—"}</p>
+ </div>
+ <div class="grid g4" style="margin-bottom:16px">
   ${statCard("user","Total users",DB.users.length)}${statCard("check","Active users",activeUsers)}
   ${statCard("play","Words practiced",totalAttempts)}${statCard("target","Average accuracy",acc+"%")}
  </div>
- <div class="grid g2" style="margin-top:16px">
+ <div class="grid g2">
   <div class="card pad"><h3>Most Missed Words</h3>${topMissed.length?topMissed.map(x=>`<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)"><strong>${esc(x.w?x.w.display:"?")}</strong><span class="chip difficult">${x.c} misses</span></div>`).join(""):"<p class='small muted'>No mistake data yet.</p>"}</div>
   <div class="card pad"><h3>Most Common Mistake Types</h3>${topTypes.length?topTypes.map(([t,c])=>`<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)"><span>${ERRTYPES[t]||t}</span><span class="chip neutral">${c}</span></div>`).join(""):"<p class='small muted'>No mistake data yet.</p>"}</div>
-  <div class="card pad"><h3>Most Popular Categories</h3>${topCats.map(c=>`<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)"><span>${esc(c.n)}</span><span class="chip neutral">${c.c} attempts</span></div>`).join("")}</div>
+  <div class="card pad"><h3>Most Popular Categories</h3>${topCats.length?topCats.map(c=>`<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)"><span>${esc(c.n)}</span><span class="chip neutral">${c.c} attempts</span></div>`).join(""):"<p class='small muted'>No attempt data yet.</p>"}</div>
   <div class="card pad"><h3>Vocabulary by Source</h3>${Object.entries(bySource).map(([sid,c])=>`<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)"><span>${esc((DB.sources.find(s=>s.id===sid)||{}).name||sid)}</span><span class="chip neutral">${c} words</span></div>`).join("")}</div>
  </div>`;
 }
@@ -1466,14 +1513,14 @@ function adminVocab(v){
   const slice=list.slice((adminVocabState.page-1)*per,adminVocabState.page*per);
   v.innerHTML=`<div class="row spread wrap" style="margin-bottom:12px">
    <input id="av-q" placeholder="Search words…" style="max-width:280px" value="${esc(adminVocabState.q)}"/>
-   <div class="row"><button class="btn" id="av-add">${ic("plus")} Add Word</button><button class="btn" href="#/admin/import" onclick="location.hash='#/admin/import'">${ic("upload")} Import</button></div></div>
-  <div class="card" style="overflow:auto"><table><thead><tr><th>Word</th><th>Category</th><th>Source</th><th>Diff</th><th>Status</th><th>Needs Review</th><th>Attempts</th><th>Accuracy</th><th></th></tr></thead><tbody>
-  ${slice.map(w=>{const tot=DB.attempts.filter(a=>a.wordId===w.id);const p=DB.progress[pkey(curUser().id,w.id)];
+   <div class="row"><button class="btn" id="av-add">${ic("plus")} Add Word</button></div></div>
+  <div class="card" style="overflow:auto"><table><thead><tr><th>Word</th><th>Category</th><th>Source</th><th>Diff</th><th>Status</th><th>Needs Review</th><th>Attempts</th><th></th></tr></thead><tbody>
+  ${slice.map(w=>{const p=DB.progress[pkey(curUser().id,w.id)];
    return`<tr><td><strong>${esc(w.display)}</strong>${w.isMultiword?' <span class="chip neutral">phrase</span>':""}${w.isHyphenated?' <span class="chip neutral">hyph</span>':""}</td>
    <td class="small">${esc(w.categories.map(catName).join(", ")||"—")}</td><td class="small muted">${esc((DB.sources.find(s=>s.id===w.source)||{}).name||"—")}</td>
    <td>${w.difficulty}★</td><td>${w.active?'<span class="chip mastered">active</span>':'<span class="chip difficult">archived</span>'}</td>
    <td>${w.needsReview?'<span class="chip difficult">needs review</span>':"—"}</td>
-   <td>${p?p.attempts:0}</td><td>${p&&p.attempts?p.accuracy+"%":"—"}</td>
+   <td>${p?p.attempts:0}</td>
    <td class="row"><button class="btn" data-ae="${w.id}" aria-label="Edit">${ic("edit",15)}</button><button class="btn" data-aarch="${w.id}" aria-label="Archive">${ic("down",15)}</button><button class="btn danger" data-adel="${w.id}" aria-label="Delete">${ic("trash",15)}</button></td></tr>`}).join("")}
   </tbody></table></div>
   ${pages>1?`<div class="row" style="justify-content:center;margin-top:12px"><button class="btn" id="avp" ${adminVocabState.page<=1?"disabled":""}>←</button><span class="small muted" style="padding:0 10px">${adminVocabState.page} / ${pages}</span><button class="btn" id="avn" ${adminVocabState.page>=pages?"disabled":""}>→</button></div>`:""}`;
@@ -1488,7 +1535,7 @@ function adminVocab(v){
 }
 function wordForm(w,done){
  const isNew=!w;
- w=w||{display:"",categories:[],difficulty:2,source:"src_admin",meaning:"",example:"",pos:"",ipa:"",needsReview:false,active:true};
+ w=w||{display:"",categories:[],difficulty:2,source:"src_admin",meaning:"",example:"",pos:"",needsReview:false};
  modal(isNew?"Add Word":"Edit Word",`
   <label>Word / phrase</label><input id="wf-w" value="${esc(w.display)}" ${isNew?"":"readonly"}/>
   <label>Categories (Ctrl-click for multiple)</label><select id="wf-c" multiple size="5">${DB.categories.map(c=>`<option value="${c.id}" ${w.categories.includes(c.id)?"selected":""}>${esc(c.name)}</option>`).join("")}</select>
@@ -1503,9 +1550,8 @@ function wordForm(w,done){
   const disp=$("#wf-w").value.trim();if(!disp)return toast("Word is required.","err");
   const cats=[...$("#wf-c").selectedOptions].map(o=>o.value);
   if(isNew){
-   const norm=disp.toLowerCase().replace(/[^a-z0-9]+/g,"");
-   if(DB.words.some(x=>x.normalized===norm))return toast("This word already exists in the database (duplicate).","err");
-   DB.words.push({...newWord(disp,cats,+$("#wf-d").value||2,$("#wf-s").value),meaning:$("#wf-m").value.trim(),example:$("#wf-e").value.trim(),pos:$("#wf-p").value.trim(),needsReview:$("#wf-nr").checked});
+   if(DB.words.some(x=>x.normalized===normOf(disp)))return toast("This word already exists in the database (duplicate).","err");
+   DB.words.push({...newWord(disp,cats,"src_admin"),difficulty:+$("#wf-d").value||2,meaning:$("#wf-m").value.trim(),example:$("#wf-e").value.trim(),pos:$("#wf-p").value.trim(),needsReview:$("#wf-nr").checked});
   }else{
    w.categories=cats;w.difficulty=+$("#wf-d").value||2;w.source=$("#wf-s").value;w.meaning=$("#wf-m").value.trim();w.example=$("#wf-e").value.trim();w.pos=$("#wf-p").value.trim();w.needsReview=$("#wf-nr").checked;
   }
@@ -1515,8 +1561,8 @@ function wordForm(w,done){
 function adminImport(v){
  v.innerHTML=`<div class="grid g2">
   <div class="card pad">
-   <h3>${ic("upload")} PDF Import</h3>
-   <p class="small muted" style="margin:8px 0">Upload a vocabulary PDF (e.g. <em>1200_most_commonly_repeated_words.pdf</em>). Text is extracted in-browser, categories detected, duplicates flagged, then <strong>you approve before anything is stored</strong>. Re-importing the same source will not create duplicate canonical words.</p>
+   <h3>${ic("upload")} PDF Import (additional sources)</h3>
+   <p class="small muted" style="margin:8px 0">The initial vocabulary (${DB.words.length} words, ${DB.categories.length} categories) is already hard-coded from two PDF sources. You can upload another PDF here; text is extracted in-browser, categories detected, duplicates flagged, then <strong>you approve before anything is stored</strong>. Re-imports never create duplicate canonical words.</p>
    <input type="file" id="pdf-f" accept=".pdf,application/pdf"/>
    <div id="pdf-status" class="small muted" style="margin-top:8px"></div>
   </div>
@@ -1528,7 +1574,7 @@ function adminImport(v){
    ${DB.sources.map(s=>`<div class="row spread" style="padding:7px 0;border-bottom:1px solid var(--line)"><div><strong>${esc(s.name)}</strong><div class="small muted">${s.type}${s.fileName?" · "+esc(s.fileName):""}</div></div><span class="chip neutral">${DB.words.filter(w=>w.source===s.id).length} words</span></div>`).join("")}
   </div>
  </div>`;
- $("#csv-go").onclick=()=>csvImportModal(()=>render());
+ $("#csv-go").onclick=()=>csvImportModal(()=>vAdmin($("#view"),"admin","import"));
  $("#pdf-f").addEventListener("change",async e=>{
   const f=e.target.files[0];if(!f)return;
   const stat=$("#pdf-status");stat.textContent="Loading PDF engine…";
@@ -1547,82 +1593,69 @@ function adminImport(v){
     if(line.trim())lines.push(line.trim());
    }
    stat.textContent="Analyzing entries…";
-   const preview=pdfExtract(lines,f.name);
-   stat.textContent=`Extracted ${preview.total} raw entries.`;
-   showPdfPreview(preview);
+   showPdfPreview(pdfExtract(lines,f.name));
   }catch(err){console.error(err);stat.textContent="PDF engine could not load (offline?). Use CSV import instead — it works fully offline."}
  });
 }
 function pdfExtract(lines,fileName){
- const entries=[];let currentCat="";
- const catGuess=/^[A-Z][A-Za-z '&/()-]{2,50}$/;
+ const entries=[];let currentCat="";const seen=new Set();
  const listMarker=/^[\s]*(\d+[\.\)]|[-•*])\s*/;
- const seen=new Set();
  for(const raw of lines){
   let line=raw.replace(listMarker,"").replace(/\s{2,}/g," ").trim();
   if(!line||line.length<2)continue;
-  const looksCat=line===line.toUpperCase()&&line.length<=50&&/[A-Z]/.test(line);
-  const shortNoPunct=!/[.,;:]$/.test(line)&&line.split(/\s+/).length<=4&&/^[A-Z]/.test(line)&&!seen.has(line.toLowerCase());
-  if(looksCat||(shortNoPunct&&line.split(/\s+/).length<=3&&!entries.some(e=>e.word.toLowerCase()===line.toLowerCase())&&Math.random===Math.random&&false)){
-   currentCat=line.replace(/\b\w/g,c=>c.toUpperCase());continue;
+  if(/^(list of ielts listening( words)?|list of ielts)/i.test(line)){
+   const m=line.match(/[-–]\s*([^:]+):?$/);if(m){currentCat=m[1].trim();continue}
   }
-  if(shortNoPunct&&line.split(/\s+/).length<=3&&currentCat&&entries.length&&/^[a-z]/.test(entries[entries.length-1].word)){currentCat=currentCat;/*continue below as word*/}
-  // multi-word phrases allowed; strip trailing punctuation artifacts
+  const isHeading=/^[A-Z][^.!?]*:$/.test(line)||line.endsWith("Words:")||line.endsWith("Words -")||/^(4\.|2[0-9]\.|3[0-7]\.)\s*(List|Words)/.test(line);
+  if(isHeading){const m=line.match(/[-–:]\s*([A-Za-z&/ ]+):?\s*$/);if(m)currentCat=m[1].trim();continue}
   let word=line.replace(/[.,;:]+$/,"").trim();
-  if(!/^[A-Za-z][A-Za-z'\- ]*$/.test(word)){continue}
-  const norm=word.toLowerCase().replace(/[^a-z0-9]+/g,"");
-  const dupInFile=seen.has(norm);seen.add(norm);
-  const dupDB=DB.words.find(w=>w.normalized===norm);
-  entries.push({word,category:currentCat,dupInFile,dupDB:!!dupDB,hyphenated:/-/.test(word),multiword:/\s/.test(word),needsReview:word.length<2||dupInFile,status:dupDB?"duplicate":"ready"});
+  if(!/^[A-Za-z][A-Za-z'\- /()]*$/.test(word)||word.length<2)continue;
+  const key=normOf(word);
+  const dupInFile=seen.has(key);seen.add(key);
+  const dupDB=DB.words.some(w=>w.normalized===key);
+  entries.push({word,category:currentCat,dupDB,hyphenated:/-/.test(word),multiword:/\s/.test(word),needsReview:word.length<3||dupInFile||NEEDS_REVIEW.has(word),status:dupDB?"duplicate":(word.length<3||NEEDS_REVIEW.has(word)?"review":"ready")});
  }
- const total=entries.length;
- const unique=new Set(seen).size;
- const cats=[...new Set(entries.map(e=>e.category).filter(Boolean))];
- return{entries,total,unique,cats,fileName};
+ return{entries,total:entries.length,unique:new Set(seen).size,cats:[...new Set(entries.map(e=>e.category).filter(Boolean))],fileName};
 }
 function showPdfPreview(p){
- const rows=p.entries;
- const ready=rows.filter(r=>r.status==="ready");
- const sourceName="IELTS Listening Vocabulary — "+(p.fileName.replace(/\.pdf$/i,"").replace(/_/g," "));
  modal(`Import Preview — ${p.fileName}`,`
   <div class="row wrap small" style="margin-bottom:10px">
    <span class="chip neutral">${p.total} extracted</span><span class="chip mastered">${p.unique} unique</span>
-   <span class="chip difficult">${rows.filter(r=>r.dupDB).length} already in DB</span>
+   <span class="chip difficult">${p.entries.filter(r=>r.dupDB).length} already in DB</span>
    <span class="chip new">${p.cats.length} categories detected</span>
-   <span class="chip neutral">${rows.filter(r=>r.multiword).length} phrases</span>
-   <span class="chip neutral">${rows.filter(r=>r.hyphenated).length} hyphenated</span>
-   <span class="chip difficult">${rows.filter(r=>r.needsReview).length} needs review</span>
+   <span class="chip neutral">${p.entries.filter(r=>r.multiword).length} phrases</span>
+   <span class="chip neutral">${p.entries.filter(r=>r.hyphenated).length} hyphenated</span>
+   <span class="chip difficult">${p.entries.filter(r=>r.needsReview).length} needs review</span>
   </div>
-  <label>Source name for attribution</label><input id="pv-src" value="${esc(sourceName)}"/>
+  <label>Source name for attribution</label><input id="pv-src" value="${esc(p.fileName.replace(/\.pdf$/i,""))}"/>
   <div style="max-height:300px;overflow:auto;margin-top:10px"><table><thead><tr><th></th><th>Word</th><th>Category</th><th>Status</th></tr></thead><tbody>
-  ${rows.slice(0,200).map((r,i)=>`<tr><td><input type="checkbox" class="pv-chk" data-i="${i}" ${r.status==="ready"?"checked":""} style="width:auto"/></td><td><strong>${esc(r.word)}</strong>${r.multiword?' <span class="chip neutral">phrase</span>':""}${r.hyphenated?' <span class="chip neutral">hyph</span>':""}</td><td class="small">${esc(r.category||"—")}</td><td>${r.status==="ready"?'<span class="chip mastered">ready</span>':r.status==="duplicate"?'<span class="chip difficult">duplicate</span>':'<span class="chip difficult">review</span>'}</td></tr>`).join("")}
-  ${rows.length>200?`<tr><td colspan="4" class="small muted">…and ${rows.length-200} more (first 200 shown)</td></tr>`:""}
+  ${p.entries.slice(0,200).map((r,i)=>`<tr><td><input type="checkbox" class="pv-chk" data-i="${i}" ${r.status==="ready"?"checked":""} style="width:auto"/></td><td><strong>${esc(r.word)}</strong>${r.multiword?' <span class="chip neutral">phrase</span>':""}${r.hyphenated?' <span class="chip neutral">hyph</span>':""}</td><td class="small">${esc(r.category||"—")}</td><td>${r.status==="ready"?'<span class="chip mastered">ready</span>':r.status==="duplicate"?'<span class="chip difficult">duplicate</span>':'<span class="chip difficult">review</span>'}</td></tr>`).join("")}
+  ${p.entries.length>200?`<tr><td colspan="4" class="small muted">…and ${p.entries.length-200} more (first 200 shown)</td></tr>`:""}
   </tbody></table></div>
   <div class="mfoot"><button class="btn" data-act="close-modal">Reject</button><button class="btn primary" id="pv-go">Import Selected</button></div>`,
  ()=>{
   $("#pv-go").onclick=()=>{
-   // create or reuse source
    let src=DB.sources.find(s=>s.name===$("#pv-src").value.trim());
    if(!src){src={id:uid(),name:$("#pv-src").value.trim(),type:"PDF",fileName:p.fileName,createdAt:Date.now()};DB.sources.push(src)}
    let imported=0,skipped=0;
    $$(".pv-chk").forEach(chk=>{if(!chk.checked)return;
-    const r=rows[+chk.dataset.i];
-    if(r.dupDB){skipped++;return} // never duplicate canonical words on re-import
+    const r=p.entries[+chk.dataset.i];
+    if(r.dupDB){skipped++;return}
     let catId=null;
     if(r.category){let c=DB.categories.find(c=>c.name.toLowerCase()===r.category.toLowerCase());if(!c){c={id:uid(),name:r.category};DB.categories.push(c)}catId=c.id}
-    DB.words.push({...newWord(r.word,catId?[catId]:[],r.multiword?2:/e[st]$|tion$/.test(r.word.toLowerCase())?2:1,src.id),needsReview:r.needsReview});
+    DB.words.push({...newWord(r.word,catId?[catId]:[],src.id),needsReview:r.needsReview});
     imported++;
    });
-   saveDB();closeModal();toast(`Vocabulary imported successfully: ${imported} imported, ${skipped} skipped (duplicates).`,"ok");render();
+   saveDB();closeModal();toast(`Vocabulary imported successfully: ${imported} imported, ${skipped} skipped (duplicates).`,"ok");vAdmin($("#view"),"admin","import");
   };
  });
 }
 function adminAnalytics(v){
  const types={};DB.mistakes.forEach(m=>types[m.mistakeType]=(types[m.mistakeType]||0)+1);
- const accByDay={},volByDay={};
+ const labels=[],acc=[],vol=[];
  for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=todayISO(d);
-  const at=DB.attempts.filter(a=>todayISO(a.createdAt)===k);
-  accByDay[k]=Math.round(pct(at.filter(a=>a.isCorrect).length,at.length));volByDay[k]=at.length}
+  labels.push(d.getDate());const at=DB.attempts.filter(a=>todayISO(a.createdAt)===k);
+  acc.push(Math.round(pct(at.filter(a=>a.isCorrect).length,at.length)));vol.push(at.length)}
  v.innerHTML=`<div class="grid g2">
   <div class="card pad"><h3>Platform Accuracy (14 days, all users)</h3><canvas id="ac1"></canvas></div>
   <div class="card pad"><h3>Attempt Volume</h3><canvas id="ac2"></canvas></div>
@@ -1631,26 +1664,23 @@ function adminAnalytics(v){
    ${DB.words.filter(w=>w.needsReview).length?DB.words.filter(w=>w.needsReview).slice(0,10).map(w=>`<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><strong>${esc(w.display)}</strong><button class="btn" data-clear="${w.id}">Mark reviewed</button></div>`).join(""):`<p class="small muted">No entries flagged for review. 🎉</p>`}
   </div>
  </div>`;
- const labels=Object.keys(accByDay).map(k=>+k.slice(8));
- drawLine($("#ac1"),labels,Object.values(accByDay));
- drawBars($("#ac2"),labels,Object.values(volByDay));
+ drawLine($("#ac1"),labels,acc);
+ drawBars($("#ac2"),labels,vol);
  if(Object.keys(types).length)drawBars($("#ac3"),Object.keys(types).map(t=>(ERRTYPES[t]||t).split(" ")[0]),Object.values(types),getCSS("--bad"));
- $$("[data-clear]").forEach(b=>b.onclick=()=>{wordById(b.dataset.clear).needsReview=false;saveDB();toast("Marked as reviewed.","ok");render()});
+ $$("[data-clear]").forEach(b=>b.onclick=()=>{wordById(b.dataset.clear).needsReview=false;saveDB();toast("Marked as reviewed.","ok");vAdmin($("#view"),"admin","analytics")});
 }
 
-/* ============================ GLOBAL ACTIONS ============================ */
+/* ============================ GLOBAL ACTIONS & BOOT ============================ */
 document.addEventListener("click",e=>{
  const el=e.target.closest("[data-act]");if(!el)return;
  const act=el.dataset.act;
  if(act==="close-modal")closeModal();
  if(act==="guest"){DB.currentUserId="guest";saveDB();toast("Guest mode — your progress syncs when you create an account.","ok");navigate("/dashboard")}
- if(act==="logout"){session=null;saveSessionFn();DB.currentUserId=null;saveDB();toast("Logged out.");navigate("/")}
+ if(act==="logout"){session=null;saveSession();DB.currentUserId=null;saveDB();toast("Logged out.");navigate("/")}
 });
 window.addEventListener("hashchange",render);
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
-/* boot */
 loadDB();
-// fix: ensure endSession's save marker trick doesn't break
 render();
 </script>
 </body>
