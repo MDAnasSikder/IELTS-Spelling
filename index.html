@@ -8,16 +8,15 @@
   ============================================================================
   SpellMaster Pro — single-file spelling & vocabulary learning platform
   ============================================================================
-  INITIAL VOCABULARY (hard-coded, two PDF sources, canonical-word model):
-    Source 1: "List of words in the IELTS Listening Test" (Jibon IELTS, scan PDF)
-    Source 2: "The 1200 most commonly repeated words in IELTS Listening Test"
-              (text PDF)
-    All categories transcribed verbatim from both documents. Words shared by
-    both sources are stored as ONE canonical record linked to both sources;
-    in-category duplicates are merged; cross-category repeats become junction
-    links. Source-faithful extraction artifacts are flagged needs_review.
-  Full learning loop: listen/type → spelling engine → mistake classification
-  → visual diff → SRS → recommendations → analytics → admin → gamification.
+  INITIAL VOCABULARY (hard-coded, §3/§67/§98):
+    Source: "List of words in the IELTS Listening Test" (Jibon IELTS PDF,
+    1200_most_commonly_repeated_words.pdf) — all 37 categories, transcribed
+    verbatim as the primary dataset. Canonical-word model: duplicates inside a
+    category are merged; repeated words across categories share one record
+    with multiple category links (junction behavior). Source attribution is
+    kept on every word and shown on the word detail page.
+  Everything else: full learning loop, spelling engine, mistake analysis,
+  SRS, practice modes, admin, charts, gamification, guest mode — all local.
   DEMO LOGINS (seeded): admin@spellmaster.app / admin123
                         demo@spellmaster.app  / demo123
   ============================================================================
@@ -184,24 +183,14 @@ const ic=(n,s=18)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="no
 const icF=n=>`<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="${ICONS[n]}"/></svg>`;
 
 /* ========================================================================
-   SEED VOCABULARY — hard-coded from two source PDFs
-   Source 1 (scan) : "List of words in the IELTS Listening Test" (Jibon IELTS)
-   Source 2 (text) : "The 1200 most commonly repeated words in IELTS Listening Test"
-   Display forms preserved verbatim. Source 2 category labels are mapped onto
-   the canonical taxonomy (Nature + animal kingdom merged; Color→Colors;
-   Transportations→Transportation; Works and jobs→Jobs and work; etc.).
-   New categories from Source 2 (Plants, Architecture and Buildings,
-   Measurement) are added alongside.
+   SEED VOCABULARY — hard-coded from the source PDF
+   "List of words in the IELTS Listening Test" (1200_most_commonly_repeated_words.pdf)
+   All 37 categories transcribed verbatim. Display forms preserved from the
+   source. Duplicates within a category are merged at seed time; repeated
+   words across categories share one canonical record with multiple category
+   links (junction behavior per spec §7).
    ======================================================================== */
-const SEED_SOURCES=[
- {id:"src_doc1",name:"List of words in the IELTS Listening Test (Jibon IELTS)",type:"PDF",fileName:"1200_most_commonly_repeated_words.pdf"},
- {id:"src_doc2",name:"The 1200 most commonly repeated words in IELTS Listening Test",type:"PDF",fileName:"1200_most_commonly_repeated_words_text.pdf"}
-];
-const NEEDS_REVIEW=new Set(["lumber/wood","Local liberty","Abselling","Diggins","Masonite","Auburn","Sideway","Bullet squads","Doing Dutch","three times","per week","on sale","past the prime","Guard security","Menial jobs","In-advance","A gap","Sand trees","Health-fit",
-/* source-2 extraction artifacts & misspellings — kept verbatim, flagged */
-"burring fossil","soar power","the philipines","the dominican republic","tourist guided tour","single double bedded room"]);
-
-/* ===== Source 1: scan PDF — 37 categories ===== */
+const SEED_SOURCE={id:"src_seed",name:"List of words in the IELTS Listening Test — 1200 Repeated Words",type:"PDF",fileName:"1200_most_commonly_repeated_words.pdf"};
 const RAW={
 "Days of the week":["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Weekday","Weekend"],
 "Months of the year":["January","February","March","April","May","June","July","August","September","October","November","December"],
@@ -241,96 +230,49 @@ const RAW={
 "City":["Leisure time","Pay phone","Long-distance call","Take a message","Hold on","Telephone booth","Hang up","Maintenance","Crack","Unfurnished","Baby crib","Multiple glazing","Sideboard","Heater","Refrigerator","Fridge","Pipe","Furnace","Leak","Plumber"],
 "Other Words":["Ultrasound","Spelling","Recipient","Activity","Attitude","Encouragement","Encyclopedia","Robot","Artificial intelligence","Proficiency","Evolution","Revolution","Man-made","Narrative","Dialogue","Guarantee","Procedures","Safety road","Driving license","Prize","Ramification","Observation","Nature conservation","Life expectancy","Videos","Liberty","Republic","Opportunity","Dialect","Frequency","Calendar","Burger","Foodie","Junior","Senior","Prototype","Fulfilment","Government","Creativity","Umbrella","Original inhabitant","Indigenous","Demonstration","Circuit","Decision-making","Language test","Tests","Exams","Alternatives","Visa sponsorship","Chocolate","Biscuits","Epidemic","Pandemic","Bird flu","SARS","Toothache","Allergy","Sneeze","Fracture","Diabetes","Sore throat","Runny nose","Infectious illness","Temperature check","Dental decay","Cure","Recover","Solar"]
 };
-
-/* ===== Source 2: text PDF — mapped to canonical category names ===== */
-const RAW2={
-"Days of the week":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday","weekdays","weekend"],
-"Months of the year":["January","February","March","April","May","June","July","August","September","October","November","December"],
-"Money matters":["cash","debit","credit card","cheque","in advance","annual fee","monthly membership","interest rate","deposit","tuition fees","poverty","bank statement","money management","current account","student account","withdraw","low-risk investment","mortgage","grace period","budget deficit","retail voucher","coupon","counterfeit money","public money","taxpayers' money","debt","interest-free credit","purchase","partial refund","annuity","non-refundable","MasterCard","VISA","distribution costs","income","finance department","family finances","duty-free store"],
-"Subjects":["science","politics","history","biology","architecture","law","geography","archaeology","literature","business management","agriculture","statistics","mathematics","logic","physics","psychology","anthropology","economics","philosophy","performing arts","visual arts","chemistry","humanities"],
-"Studying at college/university":["course outline","group discussion","handout","written work","report writing","research","proofreading","experiment","experience","reference","textbook","dictionary","laptop","printer","student advisor","teamwork","module","topic","assessment","library","department","computer centre","classroom","lecture","tutor","main hall","attendance","deadline","give a talk","speech","computer laboratory","certificate","diploma","placement test","overseas students","full-time","facilities","college","dining room","specialist","knowledge","international","accommodation","home stay","primary","secondary","intermediate","media room","resources room","staff","commencement","dissertation","leaflet","faculty","pupils","pencil","feedback","tasks","outcomes","advanced","introductory","extra background","higher education","guidelines","post-secondary","supervisor","bachelor's degree","compound","vocabulary","student support services","student retention","publication","foreign students","schedule","school reunion","registrar's office","stationery"],
-"Marketing":["catalogue","interview","newsletter","competition","TV program","strategies","research method","entertainment industry","leadership","management","display","products","customer","special offer","collecting data","questionnaire","survey","mass media","statistic","profit margin","poll","business card","training","trainee","merchandise","manufacture","recruitment"],
-"Health":["yoga","tai-chi","keep-fit","salad bar","vegetarian","outdoor activities","leisure time","disease","meal","protein","balanced diet","food pyramid","vitamin","carbohydrates","rice","pasta","potatoes","pizza","tomatoes","bread","cereals","minerals","zinc","meat","seafood","eggs","beans","milk","cheese","yoghurt","fruit","vegetables","citrus fruits","green pepper","blackcurrant","nuts","egg yolk","liver","medicine","treatment","remedy","nursing care","nursery","regular exercise"],
-/* Source 2 splits Nature and The animal kingdom — merged into the canonical category */
-"Nature & Animal Kingdom":["field","footbridge","environment","waterfall","river","mountain","forest","village","coast","reef","lake","valley","hill","cliff","island","peninsula","earthquake","avalanche","tornado","typhoon","desertification","volcano","disaster","catastrophe","erosion","landslides","storm","flood","hurricane","pond","jungle","oasis","dam","canyon","birds of prey","seabirds","poultry and game","mammals","cetacean","whale","primates","rodents","fish","amphibian","reptile","insects","octopus","phylum","class","order","family","genus","species","livestock","creature","lion","penguin"],
-"Environment":["greenhouse effect","acid rain","global warming","carbon dioxide","burring fossil","exhaust fumes","deforestation","nitrogen oxide","smog","climate","pollution","temperature","power plants","landfill","cattle","wind turbine","soar power","hydroelectric power","renewable","source of energy","reliable","solar panels","environmentally friendly","oxygen","chemical-free","desert","degradation","vegetation","sea level","ocean currents","soil conditioner","coal","fossil fuels","firewood","drought","contaminated"],
-"Plants":["mushroom","fungus","leaves","seed","core","bark","trunk","twig","branch","flower","stem","roots","cluster","fertilizer"],
-"Continents":["South America","North America","Africa","Asia","Europe","Australia","Antarctica"],
-"Countries":["Egypt","Mexico","France","Indonesia","Turkey","England","Germany","China","Greece","Brazil","India","North Korea","Malaysia","New Zealand","Nigeria","Pakistan","Singapore","Switzerland","United Kingdom","Italy","the dominican republic","the philipines","Denmark"],
-"Languages":["linguistics","bilingual","trilingual","polyglot","Portuguese","Mandarin","Bengali","Chinese","Hindi","Russian","Japanese","German","Punjabi","Thai","Persian","Filipino","French","Italian","Greek"],
-"Architecture and Buildings":["dome","palace","fort","castle","glasshouse","pyramid","log cabin","lighthouse","hut","skyscraper","sculpture"],
-"Homes":["semi-detached house","duplex","terraced house","town house","row house","bungalow","thatched cottage","mobile home","houseboat","block of flats","apartment building","condominium","chimney","bedroom","basement","landlord","tenant","rent","lease","neighborhood","suburb","sofa","coffee table","dormitory","storey","kitchen","refrigerator","microwave","ground floor","oven","hallway","insurance"],
-"City":["cities","street","lane","city centre","central station","car park","department store","bridge","temple","embassy","road system","hospital","garden","avenue"],
-"Workplaces":["clinic","dentist","reception","appointment","staff selection","colleague","workshop","showroom","information desk","employer","employment","unemployed","technical cooperation","team leaders","stress","ability","vision","confidence","employee","internship"],
-"Rating and Qualities":["reasonable","satisfactory","dangerous","safe","strongly recommended","poor quality","satisfied","disappointed","efficient","luxurious","colored","spotted","striped","expensive","cheap"],
-"Touring and Backpacking":["tourist guided tour","ticket office","souvenir","trip","guest","reservation","view","culture","memorable","single double bedded room","picnic","tourist attraction","hostel","suite","aquarium"],
-"Verbs":["train","develop","collect","supervise","mark","edit","revise","exhibit","donate","surpass","register","support","hunt","persuade","concentrate","discuss","suggest","arrange","borrow","immigrate","review","learn","touch"],
-"Adjectives":["energetic","social","ancient","necessary","fantastic","exciting","fabulous","dull","comfortable","convenient","suitable","affordable","voluntary","mandatory","compulsory","temporary","permanent","immense","vast","salty","extinct","vulnerable","pessimistic","optimistic","realistic","practical","knowledgeable","flexible","confident","Western","intensive","tranquil","spectacular","intact","various"],
-"Hobbies":["orienteering","caving","spelunking","archery","ice skating","scuba-diving","snorkeling","skateboarding","bowls","darts","golf","billiards","photography","painting","pottery","woodcarving","gardening","stamp collection","embroidery","climbing","chess","parachute"],
-"Sports":["cricket","baseball","basketball","rugby","soccer","american football","hockey","swimming","tennis","squash","badminton","ping-pong","field","court","pitch","stadium","team","the discus","the javelin","the hammer","the high jump","horse racing","show jumping","polo","cycling","gymnasium","athlete","gym","extreme sports","paragliding","hang-gliding","skydiving","abseiling","snowboarding","bungee jumping","surfing","windsurfing","jet-skiing","bodyboarding","white-water rafting","kitesurfing","mountain biking","jogging","press-up","push-up","barbell","treadmill","judo","recreation","snooker","walking","championship","canoeing","refreshment"],
-"Shapes":["Square","rectangular","triangular","polygon","Oval","spherical","spiral","circular","curved","cylindrical"],
-"Measurement":["width","length","altitude","imperial system","metric system","Mass","depth","breadth","height","three dimensions","frequency"],
-"Transportation":["cargo plane","shipment","container ship","boat","lifeboat","ferry","hovercraft","hydrofoil","liner","canal boat","narrowboat","dinghy sailing","sailboat","paddle steamer","cabin cruiser","rowing boat","rowboat","kayak","canoe","punt","gondola","aircraft","helicopter","seaplane","airship","hot-air balloon","airport","crew","passenger","platform","hire a car","automobile"],
-"Vehicles":["double-decker bus","single-decker","minibus","school bus","coach","truck","tanker","van","lorry","transporter","forklift truck","tow truck","breakdown truck","pickup","jeep","caravan","camper","tractor","taxi","cab","tram","underground","subway","stream train","freight train","goods train"],
-"Weather":["humid","hot","sticky","breeze","chilly","cold","cool","dry","dusty","freezing","warm","wet","weather forecast","antenna","moisture"],
-"Places":["local library","swimming pool","cafeteria","cottage","parliament","accommodation","restaurant","canteen","cafe","bookshop","sports centre","city council","dance studio","park","conversation club","kindergarten"],
-"Equipment and Tools":["helmet","light","musical instrument","cassette","silicon chip","digital monitor","gadget","device","screen","breaks","wheels","mechanical pencil","disk","backpack"],
-"Arts and Media":["Opera","Orchestra","concert","symphony","the press","conductor","vocalist","audience","festival","carnival","exhibition","classical music","theatre","cinemas","art gallery","museum","ballet","television","radio","graphics","newspaper"],
-"Materials":["fur","metal","steel","aluminum","copper","rubber","plastic","ceramics","glass","cement","stone","textile","cotton","fabric","wool","leather","bone","paper","lumber/wood","glue","composite","fiberglass","concrete","wax","wood","silver","gold","feather"],
-"Jobs and work":["occupation","profession","designer","decorator","architect","engineer","manager","waitress","waiter","teacher","vacancy","professor","specialist","psychologist","volunteer","freelance","secretary","craftsman","work experience","curriculum vitae","mail address","receptionist","pilot","guard","flight attendant","lecturer","office assistant","clerk","accountant","cashier","captain"],
-"Colors":["blue","white","orange","green","grey","black","red","yellow","purple","brown","pink"],
-"Expressions and Time":["three times","three times per week","a gap year","full-time","part-time","midday","midnight","millennium","century","decade","fortnight"],
-"Other Words":["passport photo","state","government","individual","variety","private sector","practice","gender","creativity","original inhabitant","indigenous","demonstration","strike","entrance","circuit","guarantee","dialogue","commerce","carriage","narrative","chocolate","satellite","decision","prototype","attitude","daily routine","personal fulfillment","activity","recipient","ultrasound","pedestrian safety","traffic jams","procedures","creation","prize","junior","senior","opportunity","driving license","process","literary","man-made","republicans","umbrella","frequently updated","waiting list","sewer systems","liberal democracy","democrats","lunar calendar","libertarian","burger","videos","nature conservation","life expectancy","fund-raising event","magnet","dialect","ramification","straight","farewell","welfare","encyclopedia","evolution","revolution","illiteracy","robot","proficiency","sufficient"]
-};
+/* entries in the PDF that are ambiguous extraction artifacts → needs_review */
+const NEEDS_REVIEW=new Set(["lumber/wood","Local liberty","Abselling","Diggins","Masonite","Auburn","Sideway","Bullet squads","Doing Dutch","three times","per week","on sale","past the prime","Guard security","Menial jobs","In-advance","A gap","Sand trees","Health-fit"]);
 
 /* ============================ DATABASE (localStorage) ============================ */
-const DBKEY="spellmaster_db_v3";
+const DBKEY="spellmaster_db_v2";
 let DB=null;
 const normOf=w=>w.toLowerCase().trim().replace(/[^a-z0-9]+/g,"");
+function newWord(w,cats,sourceId){
+ const lw=w.toLowerCase().trim();
+ return{id:uid(),word:lw,display:w,normalized:normOf(w),categories:cats,difficulty:guessDifficulty(lw),source:sourceId||SEED_SOURCE.id,
+  meaning:"",example:"",pos:"",ipa:"",needsReview:NEEDS_REVIEW.has(w),active:true,createdAt:Date.now(),
+  isMultiword:/\s/.test(lw),isHyphenated:/-/.test(lw)};
+}
 function guessDifficulty(w){
  if(/\s/.test(w)&&w.length>=14)return 3;
  if(w.length>=10||/(ph|kn|gh|sc|ps|mn|gue|quo)/.test(w))return 3;
  if(w.length>=7||/\s/.test(w))return 2;
  return 1;
 }
-function newWord(w,cats,sourceId){
- const lw=w.toLowerCase().trim();
- return{id:uid(),word:lw,display:w,normalized:normOf(w),categories:cats,difficulty:guessDifficulty(lw),source:sourceId||SEED_SOURCES[0].id,
-  meaning:"",example:"",pos:"",ipa:"",needsReview:NEEDS_REVIEW.has(w),active:true,createdAt:Date.now(),
-  isMultiword:/\s/.test(lw),isHyphenated:/-/.test(lw)};
-}
 function seedDB(){
- DB.categories=[];DB.words=[];
- const catId={};const ensureCat=n=>{if(!catId[n]){const c={id:uid(),name:n};DB.categories.push(c);catId[n]=c.id}return catId[n]};
- const byNorm={};let mergedDupes=0,junctionLinks=0,crossSourceLinks=0;
- const report=[];
- const loadSource=(RAWobj,srcId)=>{
-  let listed=0,created=0,linked=0,dupInSrc=0;
-  for(const[cat,items]of Object.entries(RAWobj)){
-   const cid=ensureCat(cat);
-   for(const w of items){
-    listed++;
-    const key=normOf(w),ex=byNorm[key];
-    if(ex){ // canonical-word model: no duplicate records, only category junctions
-     if(ex.categories.includes(cid)){dupInSrc++;mergedDupes++}
-     else{ex.categories.push(cid);junctionLinks++;linked++}
-     if(ex.source!==srcId)crossSourceLinks++;
-     continue;
-    }
-    const rec=newWord(w,[cid],srcId);
-    byNorm[key]=rec;DB.words.push(rec);created++;
+ const cats=Object.keys(RAW).map(n=>({id:uid(),name:n}));
+ const catIdx={};cats.forEach(c=>catIdx[c.name]=c.id);
+ const byNorm={},words=[];let mergedDupes=0,junctionLinks=0;
+ for(const[cat,items]of Object.entries(RAW)){
+  const cid=catIdx[cat];
+  for(const w of items){
+   const key=normOf(w);
+   if(byNorm[key]){
+    const ex=byNorm[key];
+    if(ex.categories.includes(cid)){mergedDupes++}          // duplicate within same category
+    else{ex.categories.push(cid);junctionLinks++}           // cross-category junction link
+    continue;
    }
+   const rec=newWord(w,[cid],SEED_SOURCE.id);
+   byNorm[key]=rec;words.push(rec);
   }
-  report.push({sourceId:srcId,listed,created,linked,dupInSrc});
- };
- loadSource(RAW,SEED_SOURCES[0].id);
- loadSource(RAW2,SEED_SOURCES[1].id);
+ }
  const now=Date.now();
  const mk=(name,email,pass,role)=>({id:uid(),name,email,pass,role,createdAt:now,settings:{theme:"light",accent:"british",voice:"",speed:1,dailyGoal:30,strict:true,practiceDefault:"listen",hideLeaderboard:false,targetExam:"IELTS",targetBand:"",currentBand:""}});
- DB={users:[],currentUserId:null,words:DB.words,categories:DB.categories,
-  sources:[...SEED_SOURCES.map(s=>({...s,createdAt:now})),{id:"src_admin",name:"Admin Added",type:"Manual",createdAt:now},{id:"src_user",name:"User Added",type:"Import",createdAt:now}],
+ DB={users:[],currentUserId:null,words,categories:cats,
+  sources:[{...SEED_SOURCE,createdAt:now},{id:"src_admin",name:"Admin Added",type:"Manual",createdAt:now},{id:"src_user",name:"User Added",type:"Import",createdAt:now}],
   attempts:[],mistakes:[],progress:{},sessions:[],lists:[],dailyDone:{},streaks:{},xp:{},achievements:{},settings:{},
-  seedMeta:{sources:report,unique:DB.words.length,mergedDupes,junctionLinks,crossSourceLinks,categories:DB.categories.length,importedAt:now}};
+  seedMeta:{totalListed:words.length+mergedDupes+junctionLinks,unique:words.length,mergedDupes,junctionLinks,categories:cats.length,importedAt:now}};
  const admin=mk("Admin","admin@spellmaster.app","admin123","admin");
  DB.users.push(admin);
  const demo=mk("Demo Learner","demo@spellmaster.app","demo123","user");
@@ -644,7 +586,7 @@ function landingPage(){return`
    <a class="btn primary big" href="#/register">Start Practicing</a>
    <a class="btn big" href="#/explore">Explore Vocabulary</a>
   </div>
-  <p class="small muted" style="margin-top:14px">${DB.words.length} words · ${DB.categories.length} categories · from two IELTS Listening vocabulary PDF sources</p>
+  <p class="small muted" style="margin-top:14px">${DB.words.length} words · ${DB.categories.length} categories · from the IELTS Listening vocabulary PDF</p>
  </section>
  <div class="featgrid">
   ${[["play","Listen & Type","Hear the word, type it, check it — the classic IELTS dictation loop with full audio control."],
@@ -755,6 +697,7 @@ function renderApp(r,u){
  </div>`;
  $("#burger").onclick=()=>$("#sidebar").classList.toggle("open");
  $("#bell").onclick=e=>{e.stopPropagation();const p=$("#bellpanel");p.style.display=p.style.display==="none"?"block":"none"};
+ document.addEventListener("click",e=>{const p=$("#bellpanel");if(p&&!e.target.closest(".bellwrap"))p.style.display="none"},{once:false});
  $("#gsearch").addEventListener("input",debounce(e=>globalSearch(e.target.value),180));
  dispatchView(r,u);
 }
@@ -1092,7 +1035,7 @@ function endSession(){
  if(total>=5)updateStreak(session.userId);
  if(total>0){
   DB.sessions.push(rec);
-  addXP(session.userId,rec.correctCount*10+(rec.accuracy>=90?20:5));
+  addXP(session.userId,rec.correctCount*0+(rec.accuracy>=90?20:5));
   if(session.mode==="daily")DB.dailyDone[session.userId]=todayISO();
   checkAchievements(session.userId);
  }
@@ -1172,7 +1115,7 @@ function vVocab(v,u){
   list.sort((a,b)=>a.word.localeCompare(b.word));
   const pages=Math.max(1,Math.ceil(list.length/per));vocabState.page=clamp(vocabState.page,1,pages);
   const slice=list.slice((vocabState.page-1)*per,vocabState.page*per);
-  v.innerHTML=`<div class="row spread wrap"><div><h1>Vocabulary Library</h1><p class="muted small">${list.length} matching · ${DB.words.filter(w=>w.active).length} total in database · sources: IELTS Listening vocabulary PDFs</p></div>
+  v.innerHTML=`<div class="row spread wrap"><div><h1>Vocabulary Library</h1><p class="muted small">${list.length} matching · ${DB.words.filter(w=>w.active).length} total in database · source: IELTS Listening vocabulary PDF</p></div>
    ${u.role==="admin"?`<a class="btn" href="#/admin/import">${ic("upload")} Import Vocabulary</a>`:""}</div>
   <div class="card pad" style="margin:14px 0">
    <div class="grid" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr">
@@ -1485,13 +1428,12 @@ function adminDash(v){
  const topCats=Object.entries(catPop).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([id,c])=>({n:catName(id)||"?",c}));
  const bySource={};DB.words.forEach(w=>bySource[w.source]=(bySource[w.source]||0)+1);
  v.innerHTML=`
- <div class="card pad" style="margin-bottom:16px"><h3>Vocabulary Import Report (2 PDF sources)</h3>
+ <div class="card pad" style="margin-bottom:16px"><h3>Vocabulary Import Report (seeded from PDF)</h3>
   <div class="grid g4" style="margin-top:10px">
-   ${statCard("book","Unique words",m.unique??"—")}${statCard("list","Categories",m.categories??"—")}
-   ${statCard("x","Merged duplicates",m.mergedDupes??"—")}${statCard("check","Junction links",m.junctionLinks??"—")}
+   ${statCard("book","Listed entries",m.totalListed??"—")}${statCard("check","Unique words",m.unique??"—")}
+   ${statCard("x","Merged duplicates",m.mergedDupes??"—")}${statCard("list","Categories",m.categories??"—")}
   </div>
-  ${(m.sources||[]).map(r=>{const s=DB.sources.find(x=>x.id===r.sourceId)||{};return`<div class="small" style="margin-top:8px;padding:6px 0;border-bottom:1px solid var(--line)"><strong>${esc(s.name||r.sourceId)}</strong> — ${r.listed} listed · ${r.created} new canonical words · ${r.linked} cross-category links · ${r.dupInSrc} in-source duplicates merged</div>`}).join("")}
-  <p class="small muted" style="margin-top:8px">${m.crossSourceLinks||0} words appear in both sources (single canonical record, attributed to both) · ${DB.words.filter(w=>w.needsReview).length} flagged needs_review · imported ${m.importedAt?fmtDate(m.importedAt):"—"}</p>
+  <p class="small muted" style="margin-top:8px">${m.junctionLinks||0} cross-category junction links · source: ${esc(SEED_SOURCE.fileName)} · imported ${m.importedAt?fmtDate(m.importedAt):"—"} · ${DB.words.filter(w=>w.needsReview).length} flagged needs_review</p>
  </div>
  <div class="grid g4" style="margin-bottom:16px">
   ${statCard("user","Total users",DB.users.length)}${statCard("check","Active users",activeUsers)}
@@ -1562,7 +1504,7 @@ function adminImport(v){
  v.innerHTML=`<div class="grid g2">
   <div class="card pad">
    <h3>${ic("upload")} PDF Import (additional sources)</h3>
-   <p class="small muted" style="margin:8px 0">The initial vocabulary (${DB.words.length} words, ${DB.categories.length} categories) is already hard-coded from two PDF sources. You can upload another PDF here; text is extracted in-browser, categories detected, duplicates flagged, then <strong>you approve before anything is stored</strong>. Re-imports never create duplicate canonical words.</p>
+   <p class="small muted" style="margin:8px 0">The initial vocabulary (${DB.words.length} words, 37 categories) is already hard-coded from <em>${esc(SEED_SOURCE.fileName)}</em>. You can upload another PDF here; text is extracted in-browser, categories detected, duplicates flagged, then <strong>you approve before anything is stored</strong>. Re-imports never create duplicate canonical words.</p>
    <input type="file" id="pdf-f" accept=".pdf,application/pdf"/>
    <div id="pdf-status" class="small muted" style="margin-top:8px"></div>
   </div>
